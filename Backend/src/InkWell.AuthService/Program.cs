@@ -128,12 +128,27 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Ensure Database schema is correct (Auto-fix for missing columns)
+// 5. Configure Swagger - Enabled for all environments on HF
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "InkWell Auth API v1");
+    c.RoutePrefix = "swagger"; // Set Swagger at /swagger
+});
+
+// Ensure Database schema is correct
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try
     {
+        // 🧪 DEBUG: Check string start
+        if (!string.IsNullOrEmpty(connectionString))
+        {
+            var display = connectionString.Length > 20 ? connectionString.Substring(0, 20) + "..." : connectionString;
+            Console.WriteLine($"🔍 DEBUG: Using Connection String starting with: [{display}]");
+        }
+        
         var context = services.GetRequiredService<AuthDbContext>();
         
         // Comprehensive check for all core columns
