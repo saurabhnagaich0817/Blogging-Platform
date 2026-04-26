@@ -53,8 +53,10 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // 3. JWT Authentication — uses the SAME key/issuer/audience as AuthService
-var jwtSettings = builder.Configuration.GetSection("Jwt");
-var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]!);
+var jwtKey = Environment.GetEnvironmentVariable("Jwt__Key") ?? 
+             builder.Configuration["Jwt:Key"] ?? 
+             "InkWellSuperSecretKey2026_KeepItSafe!";
+var key = Encoding.ASCII.GetBytes(jwtKey);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -63,16 +65,14 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false; // HTTP is fine in development
+    options.RequireHttpsMetadata = false; 
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(key),
-        ValidateIssuer = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidateAudience = true,
-        ValidAudience = jwtSettings["Audience"],
+        ValidateIssuer = false,
+        ValidateAudience = false,
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
@@ -80,63 +80,62 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// 4a. CORS — Allow Angular frontend (localhost:4200) to call the Gateway
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:4200" };
+// 4a. CORS — Allow Angular frontend
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? 
+                    new[] { "http://localhost:4200", "https://inkwell-frontend.netlify.app" };
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
     {
-        policy.WithOrigins(allowedOrigins)   // Angular dev server + Netlify
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
     });
 });
 
-// 4b. YARP Reverse Proxy — loads routes from appsettings.json
+// 4b. YARP Reverse Proxy
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
 var app = builder.Build();
 
-// 5. Swagger UI (development only)
-if (app.Environment.IsDevelopment())
+// 5. Swagger UI - Enabled for all environments on HF
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "InkWell API Gateway v1");
-        c.RoutePrefix = "swagger";
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "InkWell API Gateway v1");
+    c.RoutePrefix = string.Empty; // Set Swagger as the root page
+});
 
-// 6. Middleware pipeline (ORDER MATTERS!)
-// UseHttpsRedirection is NOT used — services run on HTTP locally
-app.UseCors("AllowAngular");     // Must be BEFORE Auth — allow Angular requests
-app.UseSharedLogging();          // Correlation ID + request timing logs
-app.UseAuthentication();         // Validate JWT token
-app.UseAuthorization();          // Check [Authorize] policies
+// 6. Middleware pipeline
+app.UseCors("AllowAngular");
+app.UseSharedLogging();
+app.UseAuthentication();
+app.UseAuthorization();
 
 // 7. Health check / test endpoint — verify gateway is running
 app.MapGet("/test", () => Results.Ok(new
 {
     status = "Gateway Running ✅",
     timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
-    services = new[]
+    live_services = new[]
     {
-        "AuthService     → http://localhost:5010/swagger",
-        "PostService     → http://localhost:5020/swagger",
-        "CommentService  → http://localhost:5030/swagger",
-        "CategoryService → http://localhost:5040/swagger",
-        "MediaService    → http://localhost:5050/swagger",
-        "NewsletterService → http://localhost:5070/swagger",
-        "Gateway Swagger → http://localhost:5000/swagger"
+        "AuthService     → https://saurabh0817-inkwell-auth-service.hf.space",
+        "PostService     → https://saurabh0817-inkwell-post-service.hf.space",
+        "CommentService  → https://saurabh0817-inkwell-comment-service.hf.space",
+        "CategoryService → https://saurabh0817-inkwell-category-service.hf.space",
+        "MediaService    → https://saurabh0817-inkwell-media-service.hf.space",
+        "NewsletterService → https://saurabh0817-inkwell-newsletter-service.hf.space",
+        "NotificationService → https://saurabh0817-inkwell-notification-service.hf.space"
     },
-    note = "Use each service Swagger to test. Route all calls via http://localhost:5000/api/..."
+    gateway_endpoints = new[]
+    {
+        "Posts      → /api/posts",
+        "Categories → /api/categories",
+        "Auth Test  → /api/auth/test"
+    }
 }));
 
-// The Reverse Proxy takes incoming requests, matches them against configuration in appsettings.json,
-// and forwards them to the appropriate backend microservice.
 app.MapReverseProxy();
-
 app.Run();
