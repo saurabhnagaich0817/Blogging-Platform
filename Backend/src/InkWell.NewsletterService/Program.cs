@@ -21,8 +21,15 @@ builder.Services.Configure<MailSettings>(builder.Configuration.GetSection("MailS
 builder.Services.AddTransient<IEmailService, EmailService>();
 
 // 1. Database Configuration
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") ?? 
+                       Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION") ??
+                       builder.Configuration.GetConnectionString("DefaultConnection");
+
+// 🔥 Ultra-Sanitize: Remove quotes, spaces, and invisible newlines
+connectionString = connectionString?.Trim(' ', '"', '\'', '\r', '\n');
+
 builder.Services.AddDbContext<NewsletterDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(connectionString));
 
 builder.Services.AddScoped<ISubscriberRepository, SubscriberRepository>();
 builder.Services.AddScoped<INewsletterService, NewsletterService>();
@@ -34,10 +41,22 @@ builder.Services.AddMassTransit(x =>
 
     x.UsingRabbitMq((context, cfg) =>
     {
-        cfg.Host("localhost", "/", h =>
+        var rabbitHost = Environment.GetEnvironmentVariable("RABBITMQ__HOST") ?? "localhost";
+        var rabbitUser = Environment.GetEnvironmentVariable("RABBITMQ__USERNAME") ?? "guest";
+        var rabbitPass = Environment.GetEnvironmentVariable("RABBITMQ__PASSWORD") ?? "guest";
+        var vHost = (rabbitHost == "localhost" || string.IsNullOrEmpty(rabbitUser)) ? "/" : rabbitUser;
+
+        // 🚀 Use Uri based approach for RabbitMQ
+        var rabbitUri = rabbitHost == "localhost" 
+            ? new Uri($"rabbitmq://{rabbitHost}/{vHost}")
+            : new Uri($"rabbitmqs://{rabbitHost}/{vHost}");
+
+        Console.WriteLine($"🌐 Attempting RabbitMQ Connection to: {rabbitUri}");
+
+        cfg.Host(rabbitUri, h =>
         {
-            h.Username("guest");
-            h.Password("guest");
+            h.Username(rabbitUser);
+            h.Password(rabbitPass);
         });
 
         cfg.ReceiveEndpoint("newsletter-post-created", e =>
@@ -53,7 +72,8 @@ builder.Services.AddMassTransit(x =>
 
 // 3. Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]!);
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "InkWellSuperSecretKey2026_KeepItSafe!";
+var key = Encoding.ASCII.GetBytes(jwtKey);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -68,10 +88,8 @@ builder.Services.AddAuthentication(options =>
     {
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(key),
-        ValidateIssuer = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidateAudience = true,
-        ValidAudience = jwtSettings["Audience"],
+        ValidateIssuer = false,
+        ValidateAudience = false,
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
@@ -115,15 +133,32 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-
-
-if (app.Environment.IsDevelopment())
+// 5. Configure Swagger - Enabled for all environments on HF
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "InkWell Newsletter API v1");
+    c.RoutePrefix = string.Empty; // Set Swagger as the root page
+});
+
+// Ensure Database schema is correct
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<NewsletterDbContext>();
+        
+        // 🚀 Create tables if they don't exist
+        context.Database.EnsureCreated();
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while checking/fixing the database schema.");
+    }
 }
 
-// Correlation ID + request timing
 app.UseSharedLogging();
 
 app.UseAuthentication();
