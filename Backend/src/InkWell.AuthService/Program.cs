@@ -20,12 +20,12 @@ var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__De
                        Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION") ??
                        builder.Configuration.GetConnectionString("DefaultConnection");
 
-// Clean the connection string (Remove spaces/quotes)
-connectionString = connectionString?.Trim(' ', '"', '\'');
+// 🔥 Ultra-Sanitize: Remove quotes, spaces, and invisible newlines
+connectionString = connectionString?.Trim(' ', '"', '\'', '\r', '\n');
 
-if (string.IsNullOrEmpty(connectionString))
+if (string.IsNullOrWhiteSpace(connectionString))
 {
-    Console.WriteLine("❌ ERROR: Connection String is NULL or EMPTY!");
+    Console.WriteLine("❌ ERROR: Connection String is COMPLETELY MISSING!");
 }
 
 builder.Services.AddDbContext<AuthDbContext>(options =>
@@ -69,16 +69,17 @@ builder.Services.AddMassTransit(x =>
         var rabbitPass = Environment.GetEnvironmentVariable("RABBITMQ__PASSWORD") ?? "guest";
         var vHost = (rabbitHost == "localhost" || string.IsNullOrEmpty(rabbitUser)) ? "/" : rabbitUser;
 
-        Console.WriteLine($"🌐 Attempting RabbitMQ Connection to: {rabbitHost} (User: {rabbitUser}, VHost: {vHost})");
+        // 🚀 Use Uri based approach for RabbitMQ (Port 5671 for SSL)
+        var rabbitUri = rabbitHost == "localhost" 
+            ? new Uri($"rabbitmq://{rabbitHost}/{vHost}")
+            : new Uri($"rabbitmqs://{rabbitHost}/{vHost}");
 
-        cfg.Host(rabbitHost, vHost, h =>
+        Console.WriteLine($"🌐 Attempting RabbitMQ Connection to: {rabbitUri}");
+
+        cfg.Host(rabbitUri, h =>
         {
             h.Username(rabbitUser);
             h.Password(rabbitPass);
-            if (rabbitHost != "localhost")
-            {
-                h.UseSsl(s => s.Protocol = System.Security.Authentication.SslProtocols.Tls12);
-            }
         });
 
         // Force explicit exchange name for notifications
