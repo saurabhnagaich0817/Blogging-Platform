@@ -16,8 +16,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseCustomSerilog("AuthService");
 
 // 1. Configure Entity Framework Core with SQL Server
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? 
+                       builder.Configuration["ConnectionStrings__DefaultConnection"] ??
+                       builder.Configuration["CONNECTIONSTRINGS__DEFAULTCONNECTION"];
+
 builder.Services.AddDbContext<AuthDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(connectionString));
 
 // 2. Register Repositories & Services for Dependency Injection
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -52,34 +56,24 @@ builder.Services.AddAuthentication(options =>
 // Configure MassTransit and RabbitMQ
 builder.Services.AddMassTransit(x =>
 {
-    x.AddConsumer<InkWell.AuthService.Consumers.PostCreatedConsumer>();
+    x.AddConsumer<PostCreatedConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
-        var rabbitSettings = builder.Configuration.GetSection("RabbitMQ");
-        var host = rabbitSettings["Host"];
-        var username = rabbitSettings["Username"];
-        var password = rabbitSettings["Password"];
-        var virtualHost = rabbitSettings["VirtualHost"] ?? username;
+        var rabbitHost = builder.Configuration["RABBITMQ__HOST"] ?? "localhost";
+        var rabbitUser = builder.Configuration["RABBITMQ__USERNAME"] ?? "guest";
+        var rabbitPass = builder.Configuration["RABBITMQ__PASSWORD"] ?? "guest";
+        var vHost = (rabbitHost == "localhost") ? "/" : rabbitUser;
 
-        if (string.IsNullOrEmpty(host) || host == "localhost")
+        cfg.Host(rabbitHost, (rabbitHost == "localhost" ? 5672 : 5671), vHost, h =>
         {
-            cfg.Host("localhost", "/", h =>
+            h.Username(rabbitUser);
+            h.Password(rabbitPass);
+            if (rabbitHost != "localhost")
             {
-                h.Username("guest");
-                h.Password("guest");
-            });
-        }
-        else
-        {
-            // For Cloud or other external hosts
-            cfg.Host(host, 5671, virtualHost!, h =>
-            {
-                h.Username(username!);
-                h.Password(password!);
                 h.UseSsl(s => s.Protocol = System.Security.Authentication.SslProtocols.Tls12);
-            });
-        }
+            }
+        });
 
         // Force explicit exchange name for notifications
         cfg.Message<NotificationEvent>(m => m.SetEntityName("inkwell-notification-exchange"));
