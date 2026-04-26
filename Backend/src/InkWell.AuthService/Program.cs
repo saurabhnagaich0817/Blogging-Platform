@@ -151,14 +151,19 @@ using (var scope = app.Services.CreateScope())
         
         var context = services.GetRequiredService<AuthDbContext>();
         
+        // 🚀 Create tables if they don't exist
+        context.Database.EnsureCreated();
+        
         // Comprehensive check for all core columns
         var sql = @"
-            IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'Username' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD Username NVARCHAR(MAX) NULL; END
-            IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'Email' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD Email NVARCHAR(MAX) NULL; END
-            IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'FullName' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD FullName NVARCHAR(MAX) NULL; END
-            IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'ProfilePictureUrl' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD ProfilePictureUrl NVARCHAR(MAX) NULL; END
-            IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'PasswordHash' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD PasswordHash NVARCHAR(MAX) NULL; END
-            IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'CreatedAt' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(); END
+            IF OBJECT_ID('Users', 'U') IS NOT NULL BEGIN
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'Username' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD Username NVARCHAR(MAX) NULL; END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'Email' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD Email NVARCHAR(MAX) NULL; END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'FullName' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD FullName NVARCHAR(MAX) NULL; END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'ProfilePictureUrl' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD ProfilePictureUrl NVARCHAR(MAX) NULL; END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'PasswordHash' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD PasswordHash NVARCHAR(MAX) NULL; END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'CreatedAt' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(); END
+            END
         ";
         context.Database.ExecuteSqlRaw(sql);
 
