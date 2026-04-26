@@ -2,12 +2,12 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 COPY ["Backend/src/InkWell.Shared/InkWell.Shared.csproj", "Backend/src/InkWell.Shared/"]
-COPY ["Backend/src/InkWell.CommentService/InkWell.CommentService.csproj", "Backend/src/InkWell.CommentService/"]
-RUN dotnet restore "Backend/src/InkWell.CommentService/InkWell.CommentService.csproj"
+COPY ["Backend/src/InkWell.MediaService/InkWell.MediaService.csproj", "Backend/src/InkWell.MediaService/"]
+RUN dotnet restore "Backend/src/InkWell.MediaService/InkWell.MediaService.csproj"
 COPY . .
-WORKDIR "/src/Backend/src/InkWell.CommentService"
-RUN dotnet build "InkWell.CommentService.csproj" -c Release -o /app/build
-RUN dotnet publish "InkWell.CommentService.csproj" -c Release -o /app/publish /p:UseAppHost=false
+WORKDIR "/src/Backend/src/InkWell.MediaService"
+RUN dotnet build "InkWell.MediaService.csproj" -c Release -o /app/build
+RUN dotnet publish "InkWell.MediaService.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Stage 2: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
@@ -18,4 +18,4 @@ COPY --from=build /app/publish .
 EXPOSE 7860
 ENV ASPNETCORE_URLS=http://*:7860
 
-ENTRYPOINT ["dotnet", "InkWell.CommentService.dll"]
+ENTRYPOINT ["dotnet", "InkWell.MediaService.dll"]

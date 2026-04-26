@@ -16,8 +16,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseCustomSerilog("MediaService");
 
 // 1. Database Configuration
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") ?? 
+                       Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION") ??
+                       builder.Configuration.GetConnectionString("DefaultConnection");
+
+// 🔥 Ultra-Sanitize: Remove quotes, spaces, and invisible newlines
+connectionString = connectionString?.Trim(' ', '"', '\'', '\r', '\n');
+
 builder.Services.AddDbContext<MediaDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(connectionString));
 
 // 2. Dependency Injection
 builder.Services.AddHttpContextAccessor(); // Needed for URL generation
@@ -29,7 +36,8 @@ builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
 // 3. Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]!);
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "InkWellSuperSecretKey2026_KeepItSafe!";
+var key = Encoding.ASCII.GetBytes(jwtKey);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -44,10 +52,8 @@ builder.Services.AddAuthentication(options =>
     {
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(key),
-        ValidateIssuer = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidateAudience = true,
-        ValidAudience = jwtSettings["Audience"],
+        ValidateIssuer = false,
+        ValidateAudience = false,
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
@@ -58,32 +64,23 @@ builder.Services.AddMassTransit(x =>
 {
     x.UsingRabbitMq((context, cfg) =>
     {
-        var rabbitSettings = builder.Configuration.GetSection("RabbitMQ");
-        var host = rabbitSettings["Host"];
-        var username = rabbitSettings["Username"];
-        var password = rabbitSettings["Password"];
-        var virtualHost = rabbitSettings["VirtualHost"] ?? username;
+        var rabbitHost = Environment.GetEnvironmentVariable("RABBITMQ__HOST") ?? "localhost";
+        var rabbitUser = Environment.GetEnvironmentVariable("RABBITMQ__USERNAME") ?? "guest";
+        var rabbitPass = Environment.GetEnvironmentVariable("RABBITMQ__PASSWORD") ?? "guest";
+        var vHost = (rabbitHost == "localhost" || string.IsNullOrEmpty(rabbitUser)) ? "/" : rabbitUser;
 
-        if (string.IsNullOrEmpty(host) || host == "localhost")
+        // 🚀 Use Uri based approach for RabbitMQ
+        var rabbitUri = rabbitHost == "localhost" 
+            ? new Uri($"rabbitmq://{rabbitHost}/{vHost}")
+            : new Uri($"rabbitmqs://{rabbitHost}/{vHost}");
+
+        Console.WriteLine($"🌐 Attempting RabbitMQ Connection to: {rabbitUri}");
+
+        cfg.Host(rabbitUri, h =>
         {
-            cfg.Host("localhost", "/", h =>
-            {
-                h.Username("guest");
-                h.Password("guest");
-            });
-        }
-        else
-        {
-            cfg.Host(host, 5671, virtualHost!, h =>
-            {
-                h.Username(username!);
-                h.Password(password!);
-                h.UseSsl(s => 
-                {
-                    s.Protocol = System.Security.Authentication.SslProtocols.Tls12;
-                });
-            });
-        }
+            h.Username(rabbitUser);
+            h.Password(rabbitPass);
+        });
     });
 });
 
@@ -133,6 +130,14 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// 5. Configure Swagger - Enabled for all environments on HF
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "InkWell Media API v1");
+    c.RoutePrefix = string.Empty; // Set Swagger as the root page
+});
+
 // Ensure Database schema is correct
 using (var scope = app.Services.CreateScope())
 {
@@ -140,6 +145,10 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<MediaDbContext>();
+        
+        // 🚀 Create tables if they don't exist
+        context.Database.EnsureCreated();
+
         // Ensure MediaItems table exists
         context.Database.ExecuteSqlRaw(@"
             IF NOT EXISTS (SELECT * FROM sys.tables WHERE Name = 'MediaItems')
@@ -167,20 +176,9 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-
-
-
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-// Correlation ID + request timing
 app.UseSharedLogging();
 
-// 5. Enable Static Files for Local Storage 
-// This allows returning images via the browser (e.g. http://localhost:5050/uploads/uuid.jpg)
+// 6. Enable Static Files for Local Storage 
 app.UseStaticFiles(); 
 
 app.UseAuthentication();
