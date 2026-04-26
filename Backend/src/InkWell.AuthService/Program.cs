@@ -133,7 +133,7 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "InkWell Auth API v1");
-    c.RoutePrefix = "swagger"; // Set Swagger at /swagger
+    c.RoutePrefix = string.Empty; // Set Swagger as the root page
 });
 
 // Ensure Database schema is correct
