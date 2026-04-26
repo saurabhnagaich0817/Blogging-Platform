@@ -1,0 +1,35 @@
+services:
+  # API Gateway
+  - type: web
+    name: inkwell-api-gateway
+    env: docker
+    dockerContext: .
+    dockerfilePath: Backend/gateway/InkWell.API.Gateway/Dockerfile
+    plan: free
+    envVars:
+      - key: ASPNETCORE_URLS
+        value: http://*:8080
+      - key: ReverseProxy__Clusters__authCluster__Destinations__destination1__Address
+        value: https://inkwell-auth-service.onrender.com
+
+  # Auth Service
+  - type: web
+    name: inkwell-auth-service
+    env: docker
+    dockerContext: .
+    dockerfilePath: Backend/src/InkWell.AuthService/Dockerfile
+    plan: free
+    envVars:
+      - key: ASPNETCORE_URLS
+        value: http://*:8080
+
+  # Post Service
+  - type: web
+    name: inkwell-post-service
+    env: docker
+    dockerContext: .
+    dockerfilePath: Backend/src/InkWell.PostService/Dockerfile
+    plan: free
+
+  # Add more services as needed...
+  # NOTE: Render free tier will hit limits with 9 services.

@@ -1,0 +1,150 @@
+version: '3.8'
+
+services:
+  # Infrastructure: SQL Server
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=InkWell_Secure_P@ssw0rd_2026
+    ports:
+      - "1433:1433"
+    networks:
+      - inkwell-network
+
+  # Infrastructure: RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - inkwell-network
+
+  # Microservices
+  auth-service:
+    build:
+      context: .
+      dockerfile: Backend/src/InkWell.AuthService/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=db;Database=InkWellAuthDB;User Id=sa;Password=InkWell_Secure_P@ssw0rd_2026;TrustServerCertificate=True
+      - RabbitMQ__Host=rabbitmq
+      - Jwt__Key=InkWell_Very_Secure_Secret_Key_For_JWT_2026_!
+    depends_on:
+      - db
+      - rabbitmq
+    networks:
+      - inkwell-network
+
+  post-service:
+    build:
+      context: .
+      dockerfile: Backend/src/InkWell.PostService/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=db;Database=InkWellPostDB;User Id=sa;Password=InkWell_Secure_P@ssw0rd_2026;TrustServerCertificate=True
+      - RabbitMQ__Host=rabbitmq
+    depends_on:
+      - db
+      - rabbitmq
+    networks:
+      - inkwell-network
+
+  category-service:
+    build:
+      context: .
+      dockerfile: Backend/src/InkWell.CategoryService/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=db;Database=InkWellCategoryDB;User Id=sa;Password=InkWell_Secure_P@ssw0rd_2026;TrustServerCertificate=True
+    depends_on:
+      - db
+    networks:
+      - inkwell-network
+
+  comment-service:
+    build:
+      context: .
+      dockerfile: Backend/src/InkWell.CommentService/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=db;Database=InkWellCommentDB;User Id=sa;Password=InkWell_Secure_P@ssw0rd_2026;TrustServerCertificate=True
+    depends_on:
+      - db
+    networks:
+      - inkwell-network
+
+  media-service:
+    build:
+      context: .
+      dockerfile: Backend/src/InkWell.MediaService/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=db;Database=InkWellMediaDB;User Id=sa;Password=InkWell_Secure_P@ssw0rd_2026;TrustServerCertificate=True
+    depends_on:
+      - db
+    networks:
+      - inkwell-network
+
+  newsletter-service:
+    build:
+      context: .
+      dockerfile: Backend/src/InkWell.NewsletterService/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=db;Database=InkWellNewsletterDB;User Id=sa;Password=InkWell_Secure_P@ssw0rd_2026;TrustServerCertificate=True
+      - RabbitMQ__Host=rabbitmq
+    depends_on:
+      - db
+      - rabbitmq
+    networks:
+      - inkwell-network
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: Backend/src/InkWell.NotificationService/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=db;Database=InkWellNotificationDB;User Id=sa;Password=InkWell_Secure_P@ssw0rd_2026;TrustServerCertificate=True
+      - RabbitMQ__Host=rabbitmq
+    depends_on:
+      - db
+      - rabbitmq
+    networks:
+      - inkwell-network
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Backend/gateway/InkWell.API.Gateway/Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      - Jwt__Key=InkWell_Very_Secure_Secret_Key_For_JWT_2026_!
+      - ReverseProxy__Clusters__authCluster__Destinations__destination1__Address=http://auth-service:8080
+      - ReverseProxy__Clusters__postCluster__Destinations__destination1__Address=http://post-service:8080
+      - ReverseProxy__Clusters__commentCluster__Destinations__destination1__Address=http://comment-service:8080
+      - ReverseProxy__Clusters__categoryCluster__Destinations__destination1__Address=http://category-service:8080
+      - ReverseProxy__Clusters__mediaCluster__Destinations__destination1__Address=http://media-service:8080
+      - ReverseProxy__Clusters__newsletterCluster__Destinations__destination1__Address=http://newsletter-service:8080
+    depends_on:
+      - auth-service
+      - post-service
+      - comment-service
+      - category-service
+      - media-service
+      - newsletter-service
+    networks:
+      - inkwell-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./Frontend/inkwell-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - inkwell-network
+
+networks:
+  inkwell-network:
+    driver: bridge

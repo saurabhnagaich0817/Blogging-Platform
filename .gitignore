@@ -1,0 +1,50 @@
+# ======================
+# .NET / C#
+# ======================
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Logs
+*.log
+Logs/
+
+# Environment
+appsettings.Development.json
+appsettings.Local.json
+
+# ======================
+# Node / Angular
+# ======================
+node_modules/
+dist/
+.angular/
+.env
+npm-debug.log*
+
+# ======================
+# OS / Editor
+# ======================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ======================
+# Secrets (Commented out to allow initial deployment)
+# ======================
+# appsettings.json 
+
+# ======================
+# Others & Separations
+# ======================
+Frontend/
+coverage/
+.dotnet/
+
+# Media Uploads
+**/wwwroot/uploads/*
+!**/wwwroot/uploads/.gitkeep
