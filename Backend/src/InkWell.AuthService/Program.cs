@@ -151,14 +151,44 @@ using (var scope = app.Services.CreateScope())
         
         var context = services.GetRequiredService<AuthDbContext>();
         
-        // 🚀 Create tables if they don't exist
+        // 🚀 Step 1: Ensure Tables exist using a combination of EF and Raw SQL
         context.Database.EnsureCreated();
         
-        // Comprehensive check for all core columns
+        var createTablesSql = @"
+            IF OBJECT_ID('Roles', 'U') IS NULL BEGIN
+                CREATE TABLE Roles (Id INT PRIMARY KEY, Name NVARCHAR(MAX) NOT NULL);
+                INSERT INTO Roles (Id, Name) VALUES (1, 'Admin'), (2, 'Author'), (3, 'Reader');
+            END
+            IF OBJECT_ID('Users', 'U') IS NULL BEGIN
+                CREATE TABLE Users (
+                    Id UNIQUEIDENTIFIER PRIMARY KEY,
+                    Username NVARCHAR(MAX) NULL,
+                    Email NVARCHAR(450) UNIQUE NOT NULL,
+                    FullName NVARCHAR(MAX) NULL,
+                    PasswordHash NVARCHAR(MAX) NULL,
+                    CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                    Bio NVARCHAR(MAX) NULL,
+                    ProfilePictureUrl NVARCHAR(MAX) NULL,
+                    GitHubUrl NVARCHAR(MAX) NULL,
+                    LinkedInUrl NVARCHAR(MAX) NULL,
+                    PhoneNumber NVARCHAR(MAX) NULL
+                );
+            END
+            IF OBJECT_ID('UserRoles', 'U') IS NULL BEGIN
+                CREATE TABLE UserRoles (
+                    UserId UNIQUEIDENTIFIER NOT NULL,
+                    RoleId INT NOT NULL,
+                    PRIMARY KEY (UserId, RoleId)
+                );
+            END
+        ";
+        context.Database.ExecuteSqlRaw(createTablesSql);
+        
+        // Comprehensive check for all core columns (Already exist if newly created, but safe to run)
         var sql = @"
             IF OBJECT_ID('Users', 'U') IS NOT NULL BEGIN
                 IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'Username' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD Username NVARCHAR(MAX) NULL; END
-                IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'Email' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD Email NVARCHAR(MAX) NULL; END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'Email' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD Email NVARCHAR(450) NULL; END
                 IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'FullName' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD FullName NVARCHAR(MAX) NULL; END
                 IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'ProfilePictureUrl' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD ProfilePictureUrl NVARCHAR(MAX) NULL; END
                 IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = 'PasswordHash' AND Object_ID = OBJECT_ID('Users')) BEGIN ALTER TABLE Users ADD PasswordHash NVARCHAR(MAX) NULL; END
