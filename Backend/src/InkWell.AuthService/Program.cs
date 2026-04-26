@@ -56,21 +56,24 @@ builder.Services.AddAuthentication(options =>
 // Configure MassTransit and RabbitMQ
 builder.Services.AddMassTransit(x =>
 {
-    x.AddConsumer<PostCreatedConsumer>();
+    x.AddConsumer<InkWell.AuthService.Consumers.PostCreatedConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
         var rabbitHost = builder.Configuration["RABBITMQ__HOST"] ?? "localhost";
         var rabbitUser = builder.Configuration["RABBITMQ__USERNAME"] ?? "guest";
         var rabbitPass = builder.Configuration["RABBITMQ__PASSWORD"] ?? "guest";
-        var vHost = (rabbitHost == "localhost") ? "/" : rabbitUser;
+        var vHost = (rabbitHost == "localhost" || string.IsNullOrEmpty(rabbitUser)) ? "/" : rabbitUser;
 
-        cfg.Host(rabbitHost, (rabbitHost == "localhost" ? 5672 : 5671), vHost, h =>
+        // ✅ Correct MassTransit Syntax
+        cfg.Host(rabbitHost, vHost, h =>
         {
             h.Username(rabbitUser);
             h.Password(rabbitPass);
+            
             if (rabbitHost != "localhost")
             {
+                // CloudAMQP usually uses SSL on port 5671 (handled by MassTransit automatically if Ssl is configured)
                 h.UseSsl(s => s.Protocol = System.Security.Authentication.SslProtocols.Tls12);
             }
         });
