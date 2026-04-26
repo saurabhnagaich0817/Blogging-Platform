@@ -16,9 +16,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseCustomSerilog("AuthService");
 
 // 1. Configure Entity Framework Core with SQL Server
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? 
-                       builder.Configuration["ConnectionStrings__DefaultConnection"] ??
-                       builder.Configuration["CONNECTIONSTRINGS__DEFAULTCONNECTION"];
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") ?? 
+                       Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION") ??
+                       builder.Configuration.GetConnectionString("DefaultConnection");
+
+// Clean the connection string (Remove spaces/quotes)
+connectionString = connectionString?.Trim(' ', '"', '\'');
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    Console.WriteLine("❌ ERROR: Connection String is NULL or EMPTY!");
+}
 
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseSqlServer(connectionString));
@@ -29,7 +37,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 
 // 3. Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]!);
+var key = Encoding.ASCII.GetBytes(jwtSettings["Key"] ?? "InkWellSuperSecretKey2026_KeepItSafe!");
 
 builder.Services.AddAuthentication(options =>
 {
@@ -38,18 +46,14 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false; // Allow HTTP for development
+    options.RequireHttpsMetadata = false;
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(key),
-        ValidateIssuer = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidateAudience = true,
-        ValidAudience = jwtSettings["Audience"],
-        ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero
+        ValidateIssuer = false,
+        ValidateAudience = false
     };
 });
 
@@ -60,20 +64,19 @@ builder.Services.AddMassTransit(x =>
 
     x.UsingRabbitMq((context, cfg) =>
     {
-        var rabbitHost = builder.Configuration["RABBITMQ__HOST"] ?? "localhost";
-        var rabbitUser = builder.Configuration["RABBITMQ__USERNAME"] ?? "guest";
-        var rabbitPass = builder.Configuration["RABBITMQ__PASSWORD"] ?? "guest";
+        var rabbitHost = Environment.GetEnvironmentVariable("RABBITMQ__HOST") ?? "localhost";
+        var rabbitUser = Environment.GetEnvironmentVariable("RABBITMQ__USERNAME") ?? "guest";
+        var rabbitPass = Environment.GetEnvironmentVariable("RABBITMQ__PASSWORD") ?? "guest";
         var vHost = (rabbitHost == "localhost" || string.IsNullOrEmpty(rabbitUser)) ? "/" : rabbitUser;
 
-        // ✅ Correct MassTransit Syntax
+        Console.WriteLine($"🌐 Attempting RabbitMQ Connection to: {rabbitHost} (User: {rabbitUser}, VHost: {vHost})");
+
         cfg.Host(rabbitHost, vHost, h =>
         {
             h.Username(rabbitUser);
             h.Password(rabbitPass);
-            
             if (rabbitHost != "localhost")
             {
-                // CloudAMQP usually uses SSL on port 5671 (handled by MassTransit automatically if Ssl is configured)
                 h.UseSsl(s => s.Protocol = System.Security.Authentication.SslProtocols.Tls12);
             }
         });
