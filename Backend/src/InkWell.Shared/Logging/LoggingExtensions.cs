@@ -13,11 +13,10 @@ public static class LoggingExtensions
     {
         return hostBuilder.UseSerilog((context, loggerConfiguration) =>
         {
+            // 🛡️ Robust Connection String Retrieval
             var connectionString = context.Configuration.GetConnectionString("DefaultConnection") ?? 
                                    context.Configuration.GetConnectionString("AuthDbConnection") ??
-                                   context.Configuration.GetConnectionString("PostDbConnection") ??
-                                   context.Configuration.GetConnectionString("CommentDbConnection") ??
-                                   context.Configuration.GetConnectionString("CategoryDbConnection");
+                                   context.Configuration.GetConnectionString("PostDbConnection");
 
             loggerConfiguration
                 .MinimumLevel.Information()
@@ -32,15 +31,27 @@ public static class LoggingExtensions
                     outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] [{CorrelationId}] [{ServiceName}] {Message:lj}{NewLine}{Exception}"
                 );
 
-            if (!string.IsNullOrEmpty(connectionString))
+            // Only attempt DB logging if the string looks valid
+            if (!string.IsNullOrWhiteSpace(connectionString) && connectionString.Contains("="))
             {
-                loggerConfiguration.WriteTo.MSSqlServer(
-                    connectionString: connectionString,
-                    sinkOptions: new MSSqlServerSinkOptions
-                    {
-                        TableName = "Logs",
-                        AutoCreateSqlTable = true
-                    });
+                try 
+                {
+                    loggerConfiguration.WriteTo.MSSqlServer(
+                        connectionString: connectionString,
+                        sinkOptions: new MSSqlServerSinkOptions
+                        {
+                            TableName = "Logs",
+                            AutoCreateSqlTable = true
+                        });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠️ Serilog MSSqlServer Sink failed to initialize: {ex.Message}");
+                }
+            }
+            else 
+            {
+                Console.WriteLine("ℹ️ Database logging disabled: Connection string is missing or invalid.");
             }
         });
     }
