@@ -2,12 +2,12 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 COPY ["Backend/src/InkWell.Shared/InkWell.Shared.csproj", "Backend/src/InkWell.Shared/"]
-COPY ["Backend/src/InkWell.NewsletterService/InkWell.NewsletterService.csproj", "Backend/src/InkWell.NewsletterService/"]
-RUN dotnet restore "Backend/src/InkWell.NewsletterService/InkWell.NewsletterService.csproj"
+COPY ["Backend/src/InkWell.CategoryService/InkWell.CategoryService.csproj", "Backend/src/InkWell.CategoryService/"]
+RUN dotnet restore "Backend/src/InkWell.CategoryService/InkWell.CategoryService.csproj"
 COPY . .
-WORKDIR "/src/Backend/src/InkWell.NewsletterService"
-RUN dotnet build "InkWell.NewsletterService.csproj" -c Release -o /app/build
-RUN dotnet publish "InkWell.NewsletterService.csproj" -c Release -o /app/publish /p:UseAppHost=false
+WORKDIR "/src/Backend/src/InkWell.CategoryService"
+RUN dotnet build "InkWell.CategoryService.csproj" -c Release -o /app/build
+RUN dotnet publish "InkWell.CategoryService.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Stage 2: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
@@ -18,4 +18,4 @@ COPY --from=build /app/publish .
 EXPOSE 7860
 ENV ASPNETCORE_URLS=http://*:7860
 
-ENTRYPOINT ["dotnet", "InkWell.NewsletterService.dll"]
+ENTRYPOINT ["dotnet", "InkWell.CategoryService.dll"]

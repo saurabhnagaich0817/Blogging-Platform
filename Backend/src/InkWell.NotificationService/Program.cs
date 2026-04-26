@@ -49,11 +49,21 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Database
+// 1. Database Configuration
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") ?? 
+                       Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION") ??
+                       builder.Configuration.GetConnectionString("DefaultConnection");
+
+// 🔥 Ultra-Sanitize: Remove quotes, spaces, and invisible newlines
+connectionString = connectionString?.Trim(' ', '"', '\'', '\r', '\n');
+
 builder.Services.AddDbContext<NotificationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(connectionString));
 
 // Authentication
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "InkWellSuperSecretKey2026_KeepItSafe!";
+var key = Encoding.ASCII.GetBytes(jwtKey);
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -62,13 +72,11 @@ builder.Services.AddAuthentication(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
+        ValidateIssuer = false,
+        ValidateAudience = false,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        IssuerSigningKey = new SymmetricSecurityKey(key)
     };
 });
 
@@ -86,30 +94,23 @@ builder.Services.AddMassTransit(x =>
 
     x.UsingRabbitMq((context, cfg) =>
     {
-        var rabbitSettings = builder.Configuration.GetSection("RabbitMQ");
-        var host = rabbitSettings["Host"];
-        var username = rabbitSettings["Username"];
-        var password = rabbitSettings["Password"];
-        var virtualHost = rabbitSettings["VirtualHost"] ?? username;
+        var rabbitHost = Environment.GetEnvironmentVariable("RABBITMQ__HOST") ?? "localhost";
+        var rabbitUser = Environment.GetEnvironmentVariable("RABBITMQ__USERNAME") ?? "guest";
+        var rabbitPass = Environment.GetEnvironmentVariable("RABBITMQ__PASSWORD") ?? "guest";
+        var vHost = (rabbitHost == "localhost" || string.IsNullOrEmpty(rabbitUser)) ? "/" : rabbitUser;
 
-        if (string.IsNullOrEmpty(host) || host == "localhost")
+        // 🚀 Use Uri based approach for RabbitMQ
+        var rabbitUri = rabbitHost == "localhost" 
+            ? new Uri($"rabbitmq://{rabbitHost}/{vHost}")
+            : new Uri($"rabbitmqs://{rabbitHost}/{vHost}");
+
+        Console.WriteLine($"🌐 Attempting RabbitMQ Connection to: {rabbitUri}");
+
+        cfg.Host(rabbitUri, h =>
         {
-            cfg.Host("localhost", "/", h =>
-            {
-                h.Username("guest");
-                h.Password("guest");
-            });
-        }
-        else
-        {
-            // For Cloud or other external hosts
-            cfg.Host(host, 5671, virtualHost!, h =>
-            {
-                h.Username(username!);
-                h.Password(password!);
-                h.UseSsl(s => s.Protocol = System.Security.Authentication.SslProtocols.Tls12);
-            });
-        }
+            h.Username(rabbitUser);
+            h.Password(rabbitPass);
+        });
 
         // Force explicit exchange name for notifications
         cfg.Message<NotificationEvent>(m => m.SetEntityName("inkwell-notification-exchange"));
@@ -122,12 +123,24 @@ builder.Services.AddMassTransit(x =>
 
 var app = builder.Build();
 
+// 5. Configure Swagger - Enabled for all environments on HF
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "InkWell Notification API v1");
+    c.RoutePrefix = string.Empty; // Set Swagger as the root page
+});
+
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try
     {
         var context = services.GetRequiredService<NotificationDbContext>();
+        
+        // 🚀 Create tables if they don't exist
+        context.Database.EnsureCreated();
+
         var sql = @"
             IF OBJECT_ID(N'[Notifications]', N'U') IS NULL
             BEGIN
@@ -162,24 +175,11 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
 app.UseSharedLogging();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<InkWell.Shared.Middlewares.GlobalExceptionMiddleware>();
 
 app.MapControllers();
-
-// Manually start MassTransit bus to ensure it listens to CloudAMQP
-var busControl = app.Services.GetRequiredService<IBusControl>();
-await busControl.StartAsync();
 
 app.Run();
