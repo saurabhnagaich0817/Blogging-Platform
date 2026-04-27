@@ -1,11 +1,25 @@
 using MailKit.Net.Smtp;
 using MailKit.Security;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
-using Microsoft.Extensions.Logging;
 
 namespace InkWell.Shared.Services
 {
+    public interface IEmailService
+    {
+        Task SendEmailAsync(string to, string subject, string body);
+    }
+
+    public class MailSettings
+    {
+        public string Host { get; set; } = string.Empty;
+        public int Port { get; set; }
+        public string SenderName { get; set; } = string.Empty;
+        public string SenderEmail { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+
     public class EmailService : IEmailService
     {
         private readonly MailSettings _mailSettings;
@@ -19,45 +33,45 @@ namespace InkWell.Shared.Services
 
         public async Task SendEmailAsync(string to, string subject, string body)
         {
-            try
+            // 🚀 FIRE AND FORGET: Send in background so UI doesn't hang
+            _ = Task.Run(async () =>
             {
-                var email = new MimeMessage();
-                email.Sender = MailboxAddress.Parse(_mailSettings.SenderEmail);
-                email.From.Add(new MailboxAddress(_mailSettings.SenderName, _mailSettings.SenderEmail));
-                email.To.Add(MailboxAddress.Parse(to));
-                email.Subject = subject;
-
-                var builder = new BodyBuilder();
-                builder.HtmlBody = body;
-                email.Body = builder.ToMessageBody();
-
-                using var smtp = new SmtpClient();
-                _logger.LogInformation("Connecting to SMTP server {Host}:{Port}", _mailSettings.Host, _mailSettings.Port);
-                
-                // Try Port 465 first for SSL, if fails fallback to 587
-                if (_mailSettings.Port == 465)
+                try
                 {
-                    await smtp.ConnectAsync(_mailSettings.Host, _mailSettings.Port, SecureSocketOptions.SslOnConnect);
+                    var email = new MimeMessage();
+                    email.Sender = MailboxAddress.Parse(_mailSettings.SenderEmail);
+                    email.From.Add(new MailboxAddress(_mailSettings.SenderName, _mailSettings.SenderEmail));
+                    email.To.Add(MailboxAddress.Parse(to));
+                    email.Subject = subject;
+
+                    var builder = new BodyBuilder { HtmlBody = body };
+                    email.Body = builder.ToMessageBody();
+
+                    using var smtp = new SmtpClient();
+                    
+                    _logger.LogInformation("Attempting background email to {To} via {Host}:{Port}", to, _mailSettings.Host, _mailSettings.Port);
+
+                    // 🛠️ RELAXED CONNECTION: Use Auto or StartTls based on port
+                    var options = _mailSettings.Port == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.Auto;
+                    
+                    // Add a small timeout so we don't wait forever in background
+                    smtp.Timeout = 15000; // 15 seconds
+
+                    await smtp.ConnectAsync(_mailSettings.Host, _mailSettings.Port, options);
+                    await smtp.AuthenticateAsync(_mailSettings.SenderEmail, _mailSettings.Password);
+                    await smtp.SendAsync(email);
+                    await smtp.DisconnectAsync(true);
+
+                    _logger.LogInformation("✅ Email successfully sent to {To}", to);
                 }
-                else
+                catch (Exception ex)
                 {
-                    await smtp.ConnectAsync(_mailSettings.Host, _mailSettings.Port, SecureSocketOptions.StartTls);
+                    _logger.LogError("❌ Background Email Failure to {To}: {Message}", to, ex.Message);
                 }
-                
-                _logger.LogInformation("Authenticating with SMTP server as {SenderEmail}", _mailSettings.SenderEmail);
-                await smtp.AuthenticateAsync(_mailSettings.SenderEmail, _mailSettings.Password);
-                
-                _logger.LogInformation("Sending email to {To}", to);
-                await smtp.SendAsync(email);
-                
-                await smtp.DisconnectAsync(true);
-                _logger.LogInformation("Email sent successfully to {To}", to);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending email to {To}", to);
-                // We don't throw here to avoid failing the whole background task if email fails
-            }
+            });
+
+            // Return immediately
+            await Task.CompletedTask;
         }
     }
 }
