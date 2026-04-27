@@ -69,7 +69,7 @@ builder.Services.AddMassTransit(x =>
         var rabbitPass = Environment.GetEnvironmentVariable("RABBITMQ__PASSWORD") ?? "guest";
         var vHost = (rabbitHost == "localhost" || string.IsNullOrEmpty(rabbitUser)) ? "/" : rabbitUser;
 
-        cfg.Host(rabbitHost, vHost, h =>
+        cfg.Host(rabbitHost, rabbitHost == "localhost" ? 5672 : 5671, vHost, h =>
         {
             h.Username(rabbitUser);
             h.Password(rabbitPass);
