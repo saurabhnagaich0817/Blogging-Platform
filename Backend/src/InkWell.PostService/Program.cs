@@ -182,7 +182,16 @@ using (var scope = app.Services.CreateScope())
             END;
 
             IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'CategoryId' AND Object_ID = OBJECT_ID('Posts'))
-                BEGIN ALTER TABLE [Posts] ADD [CategoryId] INT NULL; END;
+                BEGIN ALTER TABLE [Posts] ADD [CategoryId] UNIQUEIDENTIFIER NULL; END;
+            ELSE
+                BEGIN 
+                    -- Force change type if it was accidentally created as INT
+                    IF (SELECT name FROM sys.types WHERE system_type_id = (SELECT system_type_id FROM sys.columns WHERE Name = 'CategoryId' AND Object_ID = OBJECT_ID('Posts'))) = 'int'
+                    BEGIN
+                        ALTER TABLE [Posts] ALTER COLUMN [CategoryId] UNIQUEIDENTIFIER NULL;
+                    END
+                END;
+
             IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'CategoryName' AND Object_ID = OBJECT_ID('Posts'))
                 BEGIN ALTER TABLE [Posts] ADD [CategoryName] NVARCHAR(MAX) NULL; END;
             IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'Slug' AND Object_ID = OBJECT_ID('Posts'))

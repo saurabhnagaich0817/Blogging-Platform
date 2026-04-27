@@ -151,6 +151,24 @@ using (var scope = app.Services.CreateScope())
         
         // 🚀 Create tables if they don't exist
         context.Database.EnsureCreated();
+
+        var sql = @"
+            IF OBJECT_ID(N'[Subscribers]', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [Subscribers] (
+                    [SubscriberId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [Email] NVARCHAR(450) NOT NULL,
+                    [FullName] NVARCHAR(MAX) NULL,
+                    [UserId] UNIQUEIDENTIFIER NULL,
+                    [Status] INT NOT NULL,
+                    [Token] NVARCHAR(MAX) NULL,
+                    [SubscribedAt] DATETIME2 NOT NULL,
+                    [UnsubscribedAt] DATETIME2 NULL
+                );
+                CREATE INDEX [IX_Subscribers_Email] ON [Subscribers]([Email]);
+            END;
+        ";
+        context.Database.ExecuteSqlRaw(sql);
     }
     catch (Exception ex)
     {
