@@ -8,6 +8,7 @@ namespace InkWell.Shared.Events
     {
         public Guid PostId { get; set; }
         public Guid AuthorId { get; set; }
+        public string AuthorName { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string Slug { get; set; } = string.Empty;
     }

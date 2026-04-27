@@ -54,6 +54,7 @@ namespace InkWell.PostService.Services
             {
                 PostId = createdPost.PostId,
                 AuthorId = createdPost.AuthorId,
+                AuthorName = createdPost.AuthorName ?? "Anonymous",
                 Title = createdPost.Title ?? string.Empty,
                 Slug = createdPost.Slug ?? string.Empty
             });
