@@ -34,7 +34,15 @@ namespace InkWell.Shared.Services
                 using var smtp = new SmtpClient();
                 _logger.LogInformation("Connecting to SMTP server {Host}:{Port}", _mailSettings.Host, _mailSettings.Port);
                 
-                await smtp.ConnectAsync(_mailSettings.Host, _mailSettings.Port, SecureSocketOptions.StartTls);
+                // Try Port 465 first for SSL, if fails fallback to 587
+                if (_mailSettings.Port == 465)
+                {
+                    await smtp.ConnectAsync(_mailSettings.Host, _mailSettings.Port, SecureSocketOptions.SslOnConnect);
+                }
+                else
+                {
+                    await smtp.ConnectAsync(_mailSettings.Host, _mailSettings.Port, SecureSocketOptions.StartTls);
+                }
                 
                 _logger.LogInformation("Authenticating with SMTP server as {SenderEmail}", _mailSettings.SenderEmail);
                 await smtp.AuthenticateAsync(_mailSettings.SenderEmail, _mailSettings.Password);

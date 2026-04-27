@@ -38,7 +38,11 @@ namespace InkWell.NewsletterService.Repositories
 
         public async Task<IEnumerable<Subscriber>> GetAllSubscribersAsync()
         {
-            return await _context.Subscribers.ToListAsync();
+            // Fetching as list to ensure it's loaded, and using AsNoTracking to avoid EF conversion issues
+            return await _context.Subscribers
+                .AsNoTracking()
+                .OrderByDescending(s => s.SubscribedAt)
+                .ToListAsync();
         }
 
         public async Task<Subscriber?> GetSubscriberByIdAsync(Guid id)
