@@ -6,20 +6,6 @@ using MimeKit;
 
 namespace InkWell.Shared.Services
 {
-    public interface IEmailService
-    {
-        Task SendEmailAsync(string to, string subject, string body);
-    }
-
-    public class MailSettings
-    {
-        public string Host { get; set; } = string.Empty;
-        public int Port { get; set; }
-        public string SenderName { get; set; } = string.Empty;
-        public string SenderEmail { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-    }
-
     public class EmailService : IEmailService
     {
         private readonly MailSettings _mailSettings;
