@@ -185,10 +185,11 @@ using (var scope = app.Services.CreateScope())
                 BEGIN ALTER TABLE [Posts] ADD [CategoryId] UNIQUEIDENTIFIER NULL; END;
             ELSE
                 BEGIN 
-                    -- Force change type if it was accidentally created as INT
-                    IF (SELECT name FROM sys.types WHERE system_type_id = (SELECT system_type_id FROM sys.columns WHERE Name = 'CategoryId' AND Object_ID = OBJECT_ID('Posts'))) = 'int'
+                    -- If it's INT, drop it and recreate as UNIQUEIDENTIFIER
+                    IF EXISTS (SELECT 1 FROM sys.columns c JOIN sys.types t ON c.system_type_id = t.system_type_id WHERE c.Name = 'CategoryId' AND c.Object_ID = OBJECT_ID('Posts') AND t.name = 'int')
                     BEGIN
-                        ALTER TABLE [Posts] ALTER COLUMN [CategoryId] UNIQUEIDENTIFIER NULL;
+                        ALTER TABLE [Posts] DROP COLUMN [CategoryId];
+                        ALTER TABLE [Posts] ADD [CategoryId] UNIQUEIDENTIFIER NULL;
                     END
                 END;
 
