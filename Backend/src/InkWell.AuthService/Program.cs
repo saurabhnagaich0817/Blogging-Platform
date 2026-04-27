@@ -69,17 +69,18 @@ builder.Services.AddMassTransit(x =>
         var rabbitPass = Environment.GetEnvironmentVariable("RABBITMQ__PASSWORD") ?? "guest";
         var vHost = (rabbitHost == "localhost" || string.IsNullOrEmpty(rabbitUser)) ? "/" : rabbitUser;
 
-        // 🚀 Use Uri based approach for RabbitMQ (Port 5671 for SSL)
-        var rabbitUri = rabbitHost == "localhost" 
-            ? new Uri($"rabbitmq://{rabbitHost}/{vHost}")
-            : new Uri($"rabbitmqs://{rabbitHost}/{vHost}");
-
-        Console.WriteLine($"🌐 Attempting RabbitMQ Connection to: {rabbitUri}");
-
-        cfg.Host(rabbitUri, h =>
+        cfg.Host(rabbitHost, vHost, h =>
         {
             h.Username(rabbitUser);
             h.Password(rabbitPass);
+
+            if (rabbitHost != "localhost")
+            {
+                h.UseSsl(s =>
+                {
+                    s.Protocol = System.Security.Authentication.SslProtocols.Tls12;
+                });
+            }
         });
 
         // Force explicit exchange name for notifications

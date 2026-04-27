@@ -47,16 +47,18 @@ builder.Services.AddMassTransit(x =>
         var vHost = (rabbitHost == "localhost" || string.IsNullOrEmpty(rabbitUser)) ? "/" : rabbitUser;
 
         // 🚀 Use Uri based approach for RabbitMQ
-        var rabbitUri = rabbitHost == "localhost" 
-            ? new Uri($"rabbitmq://{rabbitHost}/{vHost}")
-            : new Uri($"rabbitmqs://{rabbitHost}/{vHost}");
-
-        Console.WriteLine($"🌐 Attempting RabbitMQ Connection to: {rabbitUri}");
-
-        cfg.Host(rabbitUri, h =>
+        cfg.Host(rabbitHost, vHost, h =>
         {
             h.Username(rabbitUser);
             h.Password(rabbitPass);
+            
+            if (rabbitHost != "localhost")
+            {
+                h.UseSsl(s => 
+                {
+                    s.Protocol = System.Security.Authentication.SslProtocols.Tls12;
+                });
+            }
         });
 
         cfg.ReceiveEndpoint("newsletter-post-created", e =>
@@ -160,7 +162,7 @@ using (var scope = app.Services.CreateScope())
                     [Email] NVARCHAR(450) NOT NULL,
                     [FullName] NVARCHAR(MAX) NULL,
                     [UserId] UNIQUEIDENTIFIER NULL,
-                    [Status] INT NOT NULL,
+                    [Status] NVARCHAR(32) NOT NULL DEFAULT 'Pending',
                     [Token] NVARCHAR(MAX) NULL,
                     [SubscribedAt] DATETIME2 NOT NULL,
                     [UnsubscribedAt] DATETIME2 NULL
