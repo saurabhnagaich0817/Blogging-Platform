@@ -47,7 +47,7 @@ builder.Services.AddMassTransit(x =>
         var vHost = (rabbitHost == "localhost" || string.IsNullOrEmpty(rabbitUser)) ? "/" : rabbitUser;
 
         // 🚀 Use Uri based approach for RabbitMQ
-        cfg.Host(rabbitHost, vHost, h =>
+        cfg.Host(rabbitHost, rabbitHost == "localhost" ? 5672 : 5671, vHost, h =>
         {
             h.Username(rabbitUser);
             h.Password(rabbitPass);
