@@ -25,6 +25,16 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -94,24 +104,32 @@ builder.Services.AddMassTransit(x =>
 
     x.UsingRabbitMq((context, cfg) =>
     {
+        var rabbitUrl = Environment.GetEnvironmentVariable("RABBITMQ__URL");
         var rabbitHost = Environment.GetEnvironmentVariable("RABBITMQ__HOST") ?? "localhost";
         var rabbitUser = Environment.GetEnvironmentVariable("RABBITMQ__USERNAME") ?? "guest";
         var rabbitPass = Environment.GetEnvironmentVariable("RABBITMQ__PASSWORD") ?? "guest";
         var vHost = (rabbitHost == "localhost" || string.IsNullOrEmpty(rabbitUser)) ? "/" : rabbitUser;
 
-        cfg.Host(new Uri(rabbitHost == "localhost" ? $"rabbitmq://{rabbitHost}/{vHost}" : $"amqps://{rabbitHost}:5671/{vHost}"), h =>
+        if (!string.IsNullOrEmpty(rabbitUrl))
         {
-            h.Username(rabbitUser);
-            h.Password(rabbitPass);
-
-            if (rabbitHost != "localhost")
+            cfg.Host(new Uri(rabbitUrl));
+        }
+        else
+        {
+            cfg.Host(new Uri(rabbitHost == "localhost" ? $"rabbitmq://{rabbitHost}/{vHost}" : $"amqps://{rabbitHost}:5671/{vHost}"), h =>
             {
-                h.UseSsl(s =>
+                h.Username(rabbitUser);
+                h.Password(rabbitPass);
+
+                if (rabbitHost != "localhost")
                 {
-                    s.Protocol = System.Security.Authentication.SslProtocols.Tls12;
-                });
-            }
-        });
+                    h.UseSsl(s =>
+                    {
+                        s.Protocol = System.Security.Authentication.SslProtocols.Tls12;
+                    });
+                }
+            });
+        }
 
         // Force explicit exchange name for notifications
         cfg.Message<NotificationEvent>(m => m.SetEntityName("inkwell-notification-exchange"));
@@ -177,6 +195,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseSharedLogging();
+app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<InkWell.Shared.Middlewares.GlobalExceptionMiddleware>();
