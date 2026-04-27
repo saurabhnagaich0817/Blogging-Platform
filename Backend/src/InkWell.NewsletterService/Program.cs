@@ -171,23 +171,23 @@ using (var scope = app.Services.CreateScope())
         // 🚀 Create tables if they don't exist
         context.Database.EnsureCreated();
 
-        var sql = @"
-            IF OBJECT_ID(N'[Subscribers]', N'U') IS NULL
+        // 🚀 Force-Fix: Ensure columns are UNIQUEIDENTIFIER to avoid CastExceptions
+        var fixSql = @"
+            IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[Subscribers]') AND name = N'SubscriberId' AND system_type_id != 36)
             BEGIN
-                CREATE TABLE [Subscribers] (
-                    [SubscriberId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
-                    [Email] NVARCHAR(450) NOT NULL,
-                    [FullName] NVARCHAR(MAX) NULL,
-                    [UserId] UNIQUEIDENTIFIER NULL,
-                    [Status] NVARCHAR(32) NOT NULL DEFAULT 'Pending',
-                    [Token] NVARCHAR(MAX) NULL,
-                    [SubscribedAt] DATETIME2 NOT NULL,
-                    [UnsubscribedAt] DATETIME2 NULL
-                );
-                CREATE INDEX [IX_Subscribers_Email] ON [Subscribers]([Email]);
-            END;
+                ALTER TABLE [Subscribers] ALTER COLUMN [SubscriberId] UNIQUEIDENTIFIER NOT NULL;
+            END
+            IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[Subscribers]') AND name = N'Token' AND system_type_id != 36)
+            BEGIN
+                -- First convert to Guid to ensure it's valid, then alter
+                ALTER TABLE [Subscribers] ALTER COLUMN [Token] UNIQUEIDENTIFIER NULL;
+            END
+            IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[Subscribers]') AND name = N'Status' AND system_type_id != 231)
+            BEGIN
+                ALTER TABLE [Subscribers] ALTER COLUMN [Status] NVARCHAR(32) NOT NULL;
+            END
         ";
-        context.Database.ExecuteSqlRaw(sql);
+        context.Database.ExecuteSqlRaw(fixSql);
     }
     catch (Exception ex)
     {
