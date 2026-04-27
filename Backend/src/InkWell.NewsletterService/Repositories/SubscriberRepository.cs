@@ -28,17 +28,22 @@ namespace InkWell.NewsletterService.Repositories
 
         public async Task<Subscriber?> GetSubscriberByEmailAsync(string email)
         {
-            return await _context.Subscribers.FirstOrDefaultAsync(s => s.Email == email);
+            return await _context.Subscribers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Email == email);
         }
 
         public async Task<Subscriber?> GetSubscriberByTokenAsync(Guid token)
         {
-            return await _context.Subscribers.FirstOrDefaultAsync(s => s.Token == token);
+            // Using string comparison if database stores it as string
+            var tokenStr = token.ToString();
+            return await _context.Subscribers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Token.ToString() == tokenStr || s.Token == token);
         }
 
         public async Task<IEnumerable<Subscriber>> GetAllSubscribersAsync()
         {
-            // Fetching as list to ensure it's loaded, and using AsNoTracking to avoid EF conversion issues
             return await _context.Subscribers
                 .AsNoTracking()
                 .OrderByDescending(s => s.SubscribedAt)
@@ -47,7 +52,9 @@ namespace InkWell.NewsletterService.Repositories
 
         public async Task<Subscriber?> GetSubscriberByIdAsync(Guid id)
         {
-            return await _context.Subscribers.FindAsync(id);
+            return await _context.Subscribers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.SubscriberId == id);
         }
     }
 }
