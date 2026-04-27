@@ -8,7 +8,7 @@ using InkWell.Shared.Responses;
 namespace InkWell.NewsletterService.Controllers
 {
     [ApiController]
-    [Route("api/newsletter")]
+    [Route("api/[controller]")]
     [Produces("application/json")]
     public class NewsletterController : ControllerBase
     {
