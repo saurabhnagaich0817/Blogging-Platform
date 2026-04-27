@@ -8,13 +8,14 @@ namespace InkWell.NotificationService.Data
         public NotificationDbContext(DbContextOptions<NotificationDbContext> options) : base(options) { }
 
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<NotificationUser> NotificationUsers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-
-            modelBuilder.Entity<Notification>()
-                .HasIndex(notification => new { notification.UserId, notification.CreatedAt });
+            
+            modelBuilder.Entity<NotificationUser>()
+                .HasKey(u => u.UserId);
         }
     }
 }

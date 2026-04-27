@@ -2,14 +2,10 @@ using InkWell.NotificationService.Data;
 using InkWell.NotificationService.Models;
 using InkWell.Shared.Events;
 using MassTransit;
+using Microsoft.EntityFrameworkCore;
 
 namespace InkWell.NotificationService.Consumers
 {
-    /// <summary>
-    /// Consumer for PostCreatedEvent. 
-    /// Generates both targeted author notifications and global broadcast notifications 
-    /// when a new story is published.
-    /// </summary>
     public class PostCreatedConsumer : IConsumer<PostCreatedEvent>
     {
         private readonly ILogger<PostCreatedConsumer> _logger;
@@ -33,22 +29,37 @@ namespace InkWell.NotificationService.Consumers
             {
                 NotificationId = Guid.NewGuid(),
                 UserId = message.AuthorId,
+                Title = "Post Published",
                 Message = $"Your story '{message.Title}' is now live! 🚀",
                 Type = "Post",
-                IsRead = false,
                 CreatedAt = DateTime.UtcNow,
                 RelatedId = message.PostId.ToString()
             };
             dbContext.Notifications.Add(authorNotification);
 
-            // 2. BROADCAST removed to reduce noise as per user feedback.
+            // 🚀 2. GLOBAL BROADCAST: Notify ALL other users
+            var otherUsers = await dbContext.NotificationUsers
+                .Where(u => u.UserId != message.AuthorId)
+                .ToListAsync();
+
+            _logger.LogInformation("Broadcasting new post notification to {Count} users", otherUsers.Count);
+
+            foreach (var user in otherUsers)
+            {
+                dbContext.Notifications.Add(new Notification
+                {
+                    NotificationId = Guid.NewGuid(),
+                    UserId = user.UserId,
+                    Title = "New Story Published",
+                    Message = $"Check out '{message.Title}' by {message.AuthorName}!",
+                    Type = "Post",
+                    CreatedAt = DateTime.UtcNow,
+                    RelatedId = message.PostId.ToString()
+                });
+            }
 
             await dbContext.SaveChangesAsync();
-
-            // 3. SIMULATED EMAIL NOTIFICATION (For Offline Users)
-            _logger.LogInformation($"[MAIL] Detected offline subscribers. Sending email alerts for: {message.Title}");
-            
-            _logger.LogInformation($"[BROADCAST] Notification and Email tasks completed for Post: {message.Title}");
+            _logger.LogInformation($"[BROADCAST] Notification completed for Post: {message.Title}");
         }
     }
 }

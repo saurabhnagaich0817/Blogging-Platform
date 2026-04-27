@@ -2,6 +2,9 @@ using InkWell.Shared.Events;
 using MassTransit;
 using InkWell.Shared.Services;
 using Microsoft.Extensions.Options;
+using InkWell.NotificationService.Data;
+using InkWell.NotificationService.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace InkWell.NotificationService.Consumers
 {
@@ -10,50 +13,62 @@ namespace InkWell.NotificationService.Consumers
         private readonly ILogger<UserRegisteredConsumer> _logger;
         private readonly IEmailService _emailService;
         private readonly MailSettings _mailSettings;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public UserRegisteredConsumer(ILogger<UserRegisteredConsumer> logger, IEmailService emailService, IOptions<MailSettings> mailSettings)
+        public UserRegisteredConsumer(
+            ILogger<UserRegisteredConsumer> logger, 
+            IEmailService emailService, 
+            IOptions<MailSettings> mailSettings,
+            IServiceScopeFactory scopeFactory)
         {
             _logger = logger;
             _emailService = emailService;
             _mailSettings = mailSettings.Value;
+            _scopeFactory = scopeFactory;
         }
 
         public async Task Consume(ConsumeContext<UserRegisteredEvent> context)
         {
             var message = context.Message;
             
+            using var scope = _scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
+
+            // 🚀 Sync user to NotificationUsers table
+            var existing = await dbContext.NotificationUsers.FindAsync(message.UserId);
+            if (existing == null)
+            {
+                dbContext.NotificationUsers.Add(new NotificationUser
+                {
+                    UserId = message.UserId,
+                    FullName = message.FullName,
+                    Role = message.Role,
+                    LastSeen = DateTime.UtcNow
+                });
+                await dbContext.SaveChangesAsync();
+                _logger.LogInformation("Synced new user {UserId} to Notification database", message.UserId);
+            }
+
             // 1. Send Welcome Email to User
-            _logger.LogInformation($"[EMAIL EVENT] Sending Welcome Email to: {message.Email}");
-            var userSubject = $"Welcome to InkWell, {message.FullName}!";
-            var userBody = $@"
-                <div style='font-family: Arial, sans-serif; padding: 20px; color: #333;'>
-                    <h2 style='color: #4A90E2;'>Welcome to InkWell!</h2>
-                    <p>Hi <strong>{message.FullName}</strong>,</p>
-                    <p>We are thrilled to have you join our community as a <strong>{message.Role}</strong>.</p>
-                    <p>InkWell is a place where stories matter. Start exploring or writing your first post today!</p>
-                    <br/>
-                    <p>Best regards,<br/>The InkWell Team</p>
-                </div>";
-            await _emailService.SendEmailAsync(message.Email, userSubject, userBody);
+            try 
+            {
+                _logger.LogInformation($"[EMAIL EVENT] Sending Welcome Email to: {message.Email}");
+                var userSubject = $"Welcome to InkWell, {message.FullName}!";
+                var userBody = $@"<h2>Welcome to InkWell!</h2><p>Hi <strong>{message.FullName}</strong>, thrill to have you as a {message.Role}.</p>";
+                await _emailService.SendEmailAsync(message.Email, userSubject, userBody);
+            }
+            catch(Exception ex) { _logger.LogError("Welcome email failed: {Msg}", ex.Message); }
 
             // 2. Send Notification Email to Admin
             if (!string.IsNullOrEmpty(_mailSettings.AdminEmail))
             {
-                _logger.LogInformation($"[EMAIL EVENT] Sending Admin Notification to: {_mailSettings.AdminEmail}");
-                var adminSubject = "New User Registration Alert";
-                var adminBody = $@"
-                    <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd;'>
-                        <h3 style='color: #E67E22;'>New User Registered!</h3>
-                        <p>A new user has just registered on the platform:</p>
-                        <ul>
-                            <li><strong>Name:</strong> {message.FullName}</li>
-                            <li><strong>Email:</strong> {message.Email}</li>
-                            <li><strong>Role:</strong> {message.Role}</li>
-                            <li><strong>Date:</strong> {DateTime.UtcNow:f}</li>
-                        </ul>
-                        <p>Please review the user in the admin dashboard if necessary.</p>
-                    </div>";
-                await _emailService.SendEmailAsync(_mailSettings.AdminEmail, adminSubject, adminBody);
+                try 
+                {
+                    var adminSubject = "New User Registration Alert";
+                    var adminBody = $"<p>New user registered: {message.FullName} ({message.Email}) as {message.Role}.</p>";
+                    await _emailService.SendEmailAsync(_mailSettings.AdminEmail, adminSubject, adminBody);
+                }
+                catch(Exception ex) { _logger.LogError("Admin registration email failed: {Msg}", ex.Message); }
             }
         }
     }

@@ -161,6 +161,16 @@ using (var scope = app.Services.CreateScope())
         context.Database.EnsureCreated();
 
         var sql = @"
+            IF OBJECT_ID(N'[NotificationUsers]', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [NotificationUsers] (
+                    [UserId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [FullName] NVARCHAR(256) NULL,
+                    [Role] NVARCHAR(32) NULL,
+                    [LastSeen] DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+                );
+            END;
+
             IF OBJECT_ID(N'[Notifications]', N'U') IS NULL
             BEGIN
                 CREATE TABLE [Notifications] (
