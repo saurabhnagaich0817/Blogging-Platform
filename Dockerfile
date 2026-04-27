@@ -18,4 +18,4 @@ COPY --from=build /app/publish .
 EXPOSE 7860
 ENV ASPNETCORE_URLS=http://*:7860
 
-ENTRYPOINT ["dotnet", "InkWell.PostService.dll"]
+ENTRYPOINT ["dotnet", "InkWell.AuthService.dll"]
