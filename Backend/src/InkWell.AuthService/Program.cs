@@ -64,17 +64,24 @@ builder.Services.AddMassTransit(x =>
 
     x.UsingRabbitMq((context, cfg) =>
     {
-        var rabbitHost = Environment.GetEnvironmentVariable("RABBITMQ__HOST") ?? "localhost";
-        var rabbitUser = Environment.GetEnvironmentVariable("RABBITMQ__USERNAME") ?? "guest";
-        var rabbitPass = Environment.GetEnvironmentVariable("RABBITMQ__PASSWORD") ?? "guest";
-        var vHost = (rabbitHost == "localhost" || string.IsNullOrEmpty(rabbitUser)) ? "/" : rabbitUser;
+        var rabbitSettings = builder.Configuration.GetSection("RabbitMQ");
+        var rabbitHost = Environment.GetEnvironmentVariable("RABBITMQ__HOST") ?? rabbitSettings["Host"] ?? "localhost";
+        var rabbitUser = Environment.GetEnvironmentVariable("RABBITMQ__USERNAME") ?? rabbitSettings["Username"] ?? "guest";
+        var rabbitPass = Environment.GetEnvironmentVariable("RABBITMQ__PASSWORD") ?? rabbitSettings["Password"] ?? "guest";
+        var vHost = Environment.GetEnvironmentVariable("RABBITMQ__VIRTUALHOST") ?? rabbitSettings["VirtualHost"] ?? "/";
 
-        cfg.Host(new Uri(rabbitHost == "localhost" ? $"rabbitmq://{rabbitHost}/{vHost}" : $"amqps://{rabbitHost}:5671/{vHost}"), h =>
+        var isLocal = rabbitHost == "localhost" || rabbitHost == "127.0.0.1";
+        var vHostEncoded = (vHost == "/" || string.IsNullOrEmpty(vHost)) ? "%2f" : vHost.TrimStart('/');
+        var port = isLocal ? 5672 : 5671;
+        var scheme = isLocal ? "rabbitmq" : "amqps";
+        var uriString = $"{scheme}://{rabbitHost}:{port}/{vHostEncoded}";
+
+        cfg.Host(new Uri(uriString), h =>
         {
             h.Username(rabbitUser);
             h.Password(rabbitPass);
 
-            if (rabbitHost != "localhost")
+            if (!isLocal)
             {
                 h.UseSsl(s =>
                 {

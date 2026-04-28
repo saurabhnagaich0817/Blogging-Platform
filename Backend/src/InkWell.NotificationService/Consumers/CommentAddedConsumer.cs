@@ -29,6 +29,7 @@ namespace InkWell.NotificationService.Consumers
             {
                 NotificationId = Guid.NewGuid(),
                 UserId = message.PostAuthorId, // Recipient is the post author
+                Title = "New Comment",
                 Message = $"Someone commented on your post: \"{message.ContentPreview}\"",
                 Type = "Comment",
                 IsRead = false,

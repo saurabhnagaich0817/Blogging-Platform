@@ -1,0 +1,33 @@
+# InkWell Deployment Configuration Guide
+
+Aap is file ko refer kar sakte hain jab bhi aapko project ko Cloud par deploy karna ho ya Cloud services se connect karna ho.
+
+## CLOUD URLs (Hugging Face / Render)
+Agar aapko Gateway ko Cloud services se connect karna hai, toh `appsettings.json` mein `ReverseProxy:Clusters` ko in URLs se update karein:
+
+- Auth: https://saurabh0817-inkwell-auth-service.hf.space
+- Post: https://saurabh0817-inkwell-post-service.hf.space
+- Comment: https://saurabh0817-inkwell-comment-service.hf.space
+- Category: https://saurabh0817-inkwell-category-service.hf.space
+- Media: https://saurabh0817-inkwell-media-service.hf.space
+- Newsletter: https://saurabh0817-inkwell-newsletter-service.hf.space
+- Notification: https://saurabh0817-inkwell-notification-service.hf.space
+
+## LOCAL URLs (Development)
+Abhi project in ports par configured hai:
+
+- Gateway: http://localhost:7000
+- Auth: http://localhost:7001
+- Post: http://localhost:7002
+- Comment: http://localhost:7003
+- Category: http://localhost:7004
+- Media: http://localhost:7005
+- Newsletter: http://localhost:7006
+- Notification: http://localhost:7007
+
+## Database
+Project abhi Cloud Database (`SQL1003.site4now.net`) use kar raha hai. 
+Ye local aur cloud dono jagah kaam karega.
+
+## RabbitMQ
+Project `CloudAMQP` use kar raha hai, jo local aur cloud dono jagah kaam karega.

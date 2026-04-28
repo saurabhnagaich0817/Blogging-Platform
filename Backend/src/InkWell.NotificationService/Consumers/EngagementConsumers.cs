@@ -27,6 +27,7 @@ namespace InkWell.NotificationService.Consumers
             {
                 NotificationId = Guid.NewGuid(),
                 UserId = message.PostAuthorId,
+                Title = "New Like",
                 Message = $"{message.LikerName} liked your post!",
                 Type = "Like",
                 IsRead = false,
