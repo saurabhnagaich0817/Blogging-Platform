@@ -228,7 +228,7 @@ namespace InkWell.PostService.Services
             while (await _repository.SlugExistsAsync(slug))
             {
                 var existingPost = await _repository.GetPostBySlugAsync(slug);
-                if (existingPost?.PostId == currentPostId)
+                if (existingPost != null && existingPost.PostId == currentPostId)
                 {
                     break;
                 }

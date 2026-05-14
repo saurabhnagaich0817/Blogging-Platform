@@ -104,6 +104,14 @@ builder.Services.AddEndpointsApiExplorer();
 // 4. Configure Swagger with JWT support
 builder.Services.AddSwaggerGen(c =>
 {
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo 
+    { 
+        Title = "InkWell Story & Content Service", 
+        Version = "v1",
+        Description = "The core engine of InkWell. Handles story creation, SEO-friendly slugs, rich content analytics, and social engagement (likes/saves).",
+        Contact = new Microsoft.OpenApi.Models.OpenApiContact { Name = "InkWell Editorial", Email = "editor@inkwell.com" }
+    });
+
     c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -128,6 +136,8 @@ builder.Services.AddSwaggerGen(c =>
             new string[] {}
         }
     });
+
+    c.EnableAnnotations();
 });
 
 var app = builder.Build();
@@ -225,8 +235,8 @@ using (var scope = app.Services.CreateScope())
                 CREATE UNIQUE INDEX [IX_Posts_Slug] ON [Posts]([Slug]);
             END;
 
-            -- Update existing posts with a default email for testing
-            UPDATE [Posts] SET [AuthorEmail] = 'saurabhnagaich27@gmail.com' WHERE [AuthorEmail] IS NULL OR [AuthorEmail] = '';
+            -- Update existing posts with a default email for testing (Using EXEC to avoid compilation error for new column)
+            EXEC('UPDATE [Posts] SET [AuthorEmail] = ''saurabhnagaich27@gmail.com'' WHERE [AuthorEmail] IS NULL OR [AuthorEmail] = ''''');
         ";
         context.Database.ExecuteSqlRaw(sql);
     }

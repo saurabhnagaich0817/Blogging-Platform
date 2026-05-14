@@ -6,6 +6,10 @@ using InkWell.Shared.Services;
 
 namespace InkWell.NotificationService.Consumers
 {
+    /// <summary>
+    /// Ye consumer tab trigger hota hai jab koi user kisi post ko "Like" karta hai.
+    /// MassTransit automatically RabbitMQ se message pick karke yahan bhej deta hai.
+    /// </summary>
     public class PostLikedConsumer : IConsumer<PostLikedEvent>
     {
         private readonly ILogger<PostLikedConsumer> _logger;
@@ -19,27 +23,32 @@ namespace InkWell.NotificationService.Consumers
 
         public async Task Consume(ConsumeContext<PostLikedEvent> context)
         {
+            // RabbitMQ se jo data aaya hai use pick karte hain
             var message = context.Message;
+            
+            // Database operation ke liye scope create kar rahe hain taaki memory leaks na hon
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
 
+            // Naya notification object bana rahe hain jo user ko frontend par dikhega
             var notification = new Notification
             {
                 NotificationId = Guid.NewGuid(),
-                UserId = message.PostAuthorId,
+                UserId = message.PostAuthorId, // Notification usko jayegi jisne post likhi hai
                 Title = "New Like",
                 Message = $"{message.LikerName} liked your post!",
                 Type = "Like",
                 IsRead = false,
                 CreatedAt = DateTime.UtcNow,
-                RelatedId = message.PostId.ToString()
+                RelatedId = message.PostId.ToString() // Post ka ID save kar rahe hain taaki click karne par wahan le ja sakein
             };
 
+            // Database mein save kar rahe hain
             dbContext.Notifications.Add(notification);
             await dbContext.SaveChangesAsync();
             _logger.LogInformation($"[NOTIFICATION SAVED] Like notification for User {message.PostAuthorId}");
 
-            // Send Email if Author Email is available
+            // Agar author ka email available hai, toh usey real-time email bhi bhej dete hain
             if (!string.IsNullOrEmpty(message.PostAuthorEmail))
             {
                 var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
@@ -53,6 +62,8 @@ namespace InkWell.NotificationService.Consumers
                         <br/>
                         <p>Best regards,<br/>The InkWell Team</p>
                     </div>";
+                
+                // Background mein email bhej rahe hain
                 await emailService.SendEmailAsync(message.PostAuthorEmail, subject, body);
             }
         }

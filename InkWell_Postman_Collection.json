@@ -1,0 +1,367 @@
+{
+	"info": {
+		"_postman_id": "08c67fe4-4ca1-4109-b9b2-c17f15101926",
+		"name": "InkWell Full Platform API",
+		"description": "Full API collection for InkWell Microservices Platform. Includes all endpoints for Auth, Posts, Comments, Categories, Media, Newsletters, and Notifications.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth & Users",
+			"item": [
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Test User\",\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"Password123\",\n  \"role\": \"Reader\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+					}
+				},
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"Password123\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+					}
+				},
+				{
+					"name": "Google Login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"GOOGLE_ID_TOKEN_HERE\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": { "raw": "{{baseUrl}}/api/auth/google-login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "google-login"] }
+					}
+				},
+				{
+					"name": "Get All Users",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/users", "host": ["{{baseUrl}}"], "path": ["api", "users"] }
+					}
+				},
+				{
+					"name": "Get User Profile",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/users/profile/:username", "host": ["{{baseUrl}}"], "path": ["api", "users", "profile", ":username"], "variable": [{ "key": "username", "value": "testuser" }] }
+					}
+				},
+				{
+					"name": "Request Role Upgrade",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "POST",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"role\": \"Author\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": { "raw": "{{baseUrl}}/api/users/request-upgrade", "host": ["{{baseUrl}}"], "path": ["api", "users", "request-upgrade"] }
+					}
+				},
+				{
+					"name": "Approve Upgrade (Admin)",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "POST",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"role\": \"Author\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": { "raw": "{{baseUrl}}/api/users/:targetUserId/approve-upgrade", "host": ["{{baseUrl}}"], "path": ["api", "users", ":targetUserId", "approve-upgrade"], "variable": [{ "key": "targetUserId", "value": "" }] }
+					}
+				},
+				{
+					"name": "Update Profile Picture",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "PATCH",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"url\": \"https://example.com/new-pic.jpg\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": { "raw": "{{baseUrl}}/api/users/profile-picture", "host": ["{{baseUrl}}"], "path": ["api", "users", "profile-picture"] }
+					}
+				},
+				{
+					"name": "Subscribe to Author",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "POST",
+						"url": { "raw": "{{baseUrl}}/api/users/:targetUserId/subscribe", "host": ["{{baseUrl}}"], "path": ["api", "users", ":targetUserId", "subscribe"], "variable": [{ "key": "targetUserId", "value": "" }] }
+					}
+				},
+				{
+					"name": "Connect Request",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "POST",
+						"url": { "raw": "{{baseUrl}}/api/users/:targetUserId/connect", "host": ["{{baseUrl}}"], "path": ["api", "users", ":targetUserId", "connect"], "variable": [{ "key": "targetUserId", "value": "" }] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Posts",
+			"item": [
+				{
+					"name": "Get All Posts",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/posts", "host": ["{{baseUrl}}"], "path": ["api", "posts"] }
+					}
+				},
+				{
+					"name": "Get Post By Slug",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/posts/slug/:slug", "host": ["{{baseUrl}}"], "path": ["api", "posts", "slug", ":slug"], "variable": [{ "key": "slug", "value": "the-future-of-microservices" }] }
+					}
+				},
+				{
+					"name": "Create Post (Author)",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "POST",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Post Title\",\n  \"content\": \"Full HTML content here...\",\n  \"imageUrl\": \"https://example.com/img.jpg\",\n  \"status\": \"Published\",\n  \"categoryName\": \"Technology\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": { "raw": "{{baseUrl}}/api/posts", "host": ["{{baseUrl}}"], "path": ["api", "posts"] }
+					}
+				},
+				{
+					"name": "Update Post",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "PUT",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated Title\",\n  \"content\": \"Updated content...\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": { "raw": "{{baseUrl}}/api/posts/:id", "host": ["{{baseUrl}}"], "path": ["api", "posts", ":id"], "variable": [{ "key": "id", "value": "" }] }
+					}
+				},
+				{
+					"name": "Toggle Like",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "POST",
+						"url": { "raw": "{{baseUrl}}/api/posts/:id/like", "host": ["{{baseUrl}}"], "path": ["api", "posts", ":id", "like"], "variable": [{ "key": "id", "value": "" }] }
+					}
+				},
+				{
+					"name": "Toggle Save",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "POST",
+						"url": { "raw": "{{baseUrl}}/api/posts/:id/save", "host": ["{{baseUrl}}"], "path": ["api", "posts", ":id", "save"], "variable": [{ "key": "id", "value": "" }] }
+					}
+				},
+				{
+					"name": "Get My Posts",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/posts/my", "host": ["{{baseUrl}}"], "path": ["api", "posts", "my"] }
+					}
+				},
+				{
+					"name": "Seed Initial Data",
+					"request": {
+						"method": "POST",
+						"url": { "raw": "{{baseUrl}}/api/posts/seed-data", "host": ["{{baseUrl}}"], "path": ["api", "posts", "seed-data"] }
+					}
+				},
+				{
+					"name": "Get Analytics",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/posts/analytics", "host": ["{{baseUrl}}"], "path": ["api", "posts", "analytics"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Categories & Tags",
+			"item": [
+				{
+					"name": "Get Categories",
+					"request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/categories", "host": ["{{baseUrl}}"], "path": ["api", "categories"] } }
+				},
+				{
+					"name": "Create Category (Admin)",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "POST",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Lifestyle\",\n  \"description\": \"Daily life and habits\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": { "raw": "{{baseUrl}}/api/categories", "host": ["{{baseUrl}}"], "path": ["api", "categories"] }
+					}
+				},
+				{
+					"name": "Create Tag",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "POST",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"productivity\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": { "raw": "{{baseUrl}}/api/tags", "host": ["{{baseUrl}}"], "path": ["api", "tags"] }
+					}
+				},
+				{
+					"name": "Add Tag to Post",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "POST",
+						"url": { "raw": "{{baseUrl}}/api/tags/add-to-post?postId=&tagId=", "host": ["{{baseUrl}}"], "path": ["api", "tags", "add-to-post"], "query": [{ "key": "postId", "value": "" }, { "key": "tagId", "value": "" }] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Comments",
+			"item": [
+				{
+					"name": "Add Comment",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "POST",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"postId\": \"\",\n  \"content\": \"This is my feedback.\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": { "raw": "{{baseUrl}}/api/comments", "host": ["{{baseUrl}}"], "path": ["api", "comments"] }
+					}
+				},
+				{
+					"name": "Get Comments By Post",
+					"request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/comments/post/:postId", "host": ["{{baseUrl}}"], "path": ["api", "comments", "post", ":postId"], "variable": [{ "key": "postId", "value": "" }] } }
+				},
+				{
+					"name": "Get Replies",
+					"request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/comments/replies/:commentId", "host": ["{{baseUrl}}"], "path": ["api", "comments", "replies", ":commentId"], "variable": [{ "key": "commentId", "value": "" }] } }
+				},
+				{
+					"name": "Approve Comment (Mod)",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "PUT",
+						"url": { "raw": "{{baseUrl}}/api/comments/:id/approve", "host": ["{{baseUrl}}"], "path": ["api", "comments", ":id", "approve"], "variable": [{ "key": "id", "value": "" }] }
+					}
+				},
+				{
+					"name": "Like Comment",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "PUT",
+						"url": { "raw": "{{baseUrl}}/api/comments/:id/like", "host": ["{{baseUrl}}"], "path": ["api", "comments", ":id", "like"], "variable": [{ "key": "id", "value": "" }] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Media",
+			"item": [
+				{
+					"name": "Upload Media (Form-Data)",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "POST",
+						"body": {
+							"mode": "formdata",
+							"formdata": [{ "key": "file", "type": "file", "src": [] }, { "key": "altText", "value": "Alt text here", "type": "text" }]
+						},
+						"url": { "raw": "{{baseUrl}}/api/media/upload", "host": ["{{baseUrl}}"], "path": ["api", "media", "upload"] }
+					}
+				},
+				{
+					"name": "Get All Media",
+					"request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/media", "host": ["{{baseUrl}}"], "path": ["api", "media"] } }
+				}
+			]
+		},
+		{
+			"name": "Newsletter",
+			"item": [
+				{
+					"name": "Subscribe Email",
+					"request": {
+						"method": "POST",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": { "raw": "{{baseUrl}}/api/newsletter/subscribe", "host": ["{{baseUrl}}"], "path": ["api", "newsletter", "subscribe"] }
+					}
+				},
+				{
+					"name": "Confirm (Token)",
+					"request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/newsletter/confirm?token=", "host": ["{{baseUrl}}"], "path": ["api", "newsletter", "confirm"], "query": [{ "key": "token", "value": "" }] } }
+				},
+				{
+					"name": "Get Subscribers (Admin)",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/newsletter", "host": ["{{baseUrl}}"], "path": ["api", "newsletter"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Notifications",
+			"item": [
+				{
+					"name": "Get My Notifications",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/notifications", "host": ["{{baseUrl}}"], "path": ["api", "notifications"] }
+					}
+				},
+				{
+					"name": "Mark All as Read",
+					"request": {
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{jwtToken}}", "type": "string" }] },
+						"method": "PATCH",
+						"url": { "raw": "{{baseUrl}}/api/notifications/read-all", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "read-all"] }
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{ "key": "baseUrl", "value": "http://localhost:5000", "type": "string" },
+		{ "key": "jwtToken", "value": "PASTE_YOUR_JWT_HERE", "type": "string" }
+	]
+}

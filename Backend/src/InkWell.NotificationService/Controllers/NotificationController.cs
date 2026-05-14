@@ -21,6 +21,7 @@ namespace InkWell.NotificationService.Controllers
         }
 
         [HttpGet]
+        [Swashbuckle.AspNetCore.Annotations.SwaggerOperation(Summary = "Get notifications", Description = "Fetches all notifications for the current user, including global broadcasts.")]
         public async Task<IActionResult> GetNotifications()
         {
             if (!TryGetCurrentUserId(out var userId))
@@ -45,6 +46,7 @@ namespace InkWell.NotificationService.Controllers
         }
 
         [HttpPatch("{id}/read")]
+        [Swashbuckle.AspNetCore.Annotations.SwaggerOperation(Summary = "Mark as read", Description = "Updates a single notification's status to read.")]
         public async Task<IActionResult> MarkAsRead(Guid id)
         {
             if (!TryGetCurrentUserId(out var userId))
@@ -67,6 +69,7 @@ namespace InkWell.NotificationService.Controllers
         }
 
         [HttpPatch("read-all")]
+        [Swashbuckle.AspNetCore.Annotations.SwaggerOperation(Summary = "Mark all as read", Description = "Updates all unread notifications for the user to read.")]
         public async Task<IActionResult> MarkAllAsRead()
         {
             if (!TryGetCurrentUserId(out var userId))
@@ -85,6 +88,7 @@ namespace InkWell.NotificationService.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Swashbuckle.AspNetCore.Annotations.SwaggerOperation(Summary = "Delete notification", Description = "Permanently removes a notification from the database.")]
         public async Task<IActionResult> DeleteNotification(Guid id)
         {
             var notification = await _context.Notifications.FindAsync(id);

@@ -103,9 +103,10 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo 
     { 
-        Title = "InkWell Comment API", 
+        Title = "InkWell Commenting & Community Service", 
         Version = "v1",
-        Description = "Microservice handling comment threading, moderation, and likes." 
+        Description = "Microservice handling user discussions, comment threading, moderation, and engagement metrics for stories.",
+        Contact = new OpenApiContact { Name = "InkWell Dev", Email = "dev@inkwell.com" }
     });
     
     c.EnableAnnotations();

@@ -8,6 +8,10 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace InkWell.PostService.Controllers
 {
+    /// <summary>
+    /// InkWell ka main controller jo stories/posts handle karta hai.
+    /// Isme humne search, analytics, aur engagement (like/save) features implement kiye hain.
+    /// </summary>
     [ApiController]
     [Route("api/posts")]
     public class PostController : ControllerBase
@@ -20,13 +24,15 @@ namespace InkWell.PostService.Controllers
         }
 
         /// <summary>
-        /// Retrieves dashboard analytics, including total engagement and trending stories.
+        /// Dashboard analytics fetch karne ke liye.
+        /// Agar user 'Author' hai, toh usey sirf apni posts ke analytics dikhenge.
         /// </summary>
         [HttpGet("analytics")]
         [SwaggerOperation(Summary = "Get analytics data", Description = "Returns dashboard stats, trending stories, etc.")]
         public async Task<IActionResult> GetAnalytics()
         {
             Guid? authorId = null;
+            // Token se user ID aur role nikalte hain
             if (TryGetCurrentUserId(out var userId))
             {
                 var role = User.FindFirstValue(ClaimTypes.Role) ?? User.FindFirstValue("role");
@@ -36,32 +42,35 @@ namespace InkWell.PostService.Controllers
                 }
             }
 
+            // Service layer se aggregate data mangwa rahe hain
             var analytics = await _postService.GetAnalyticsAsync(authorId);
             return Ok(new BaseResponse<AnalyticsResponseDTO>(true, "Analytics fetched successfully", analytics));
         }
 
         /// <summary>
-        /// Publishes a new story to the platform. Requires Author or Admin roles.
+        /// Nayi story publish karne ke liye. Sirf Authors aur Admins allowed hain.
         /// </summary>
         [HttpPost]
         [Authorize(Roles = "Author,Admin")]
         [SwaggerOperation(Summary = "Create a new blog post", Description = "Creates a new post for the currently authenticated user.")]
         public async Task<IActionResult> CreatePost([FromBody] CreatePostDTO request)
         {
-            // First, we try to get the User ID from the logged-in user's JWT token.
+            // Sabse pehle JWT token check karte hain ki user logged in hai ya nahi
             if (!TryGetCurrentUserId(out var authorId))
             {
-                // If we can't find the user ID, it means the user is not authenticated properly.
                 return Unauthorized(new BaseResponse<string>(false, "Invalid or missing user ID in token.", null));
             }
 
-            // Call the service to save the post in the database.
+            // Post ko database mein save karte hain
             var response = await _postService.CreatePostAsync(request, authorId);
             
-            // Return a '201 Created' response with the newly created post data.
+            // 201 status code bhejte hain kyunki resource create ho gaya hai
             return CreatedAtAction(nameof(GetPost), new { id = response.PostId }, new BaseResponse<PostResponseDTO>(true, "Post created successfully", response));
         }
 
+        /// <summary>
+        /// Platform ki saari public posts fetch karne ke liye.
+        /// </summary>
         [HttpGet]
         [SwaggerOperation(Summary = "Fetch all posts", Description = "Retrieves a list of all blog posts.")]
         public async Task<IActionResult> GetAllPosts()

@@ -20,12 +20,12 @@ var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__De
                        Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION") ??
                        builder.Configuration.GetConnectionString("DefaultConnection");
 
-// 🔥 Ultra-Sanitize: Remove quotes, spaces, and invisible newlines
+//  Ultra-Sanitize: Remove quotes, spaces, and invisible newlines
 connectionString = connectionString?.Trim(' ', '"', '\'', '\r', '\n');
 
 if (string.IsNullOrWhiteSpace(connectionString))
 {
-    Console.WriteLine("❌ ERROR: Connection String is COMPLETELY MISSING!");
+    Console.WriteLine("ERROR: Connection String is COMPLETELY MISSING!");
 }
 
 builder.Services.AddDbContext<AuthDbContext>(options =>
@@ -107,6 +107,18 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "InkWell Authentication & User Service",
+        Version = "v1",
+        Description = "Handles user registration, JWT-based authentication, role-based access control, and user profile management for the InkWell platform.",
+        Contact = new Microsoft.OpenApi.Models.OpenApiContact
+        {
+            Name = "InkWell Support",
+            Email = "support@inkwell.com"
+        }
+    });
+
     // Add Security Definition for JWT Bearer Token to show the "Authorize" button
     c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
@@ -115,7 +127,7 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "JWT Authorization header using the Bearer scheme. \r\n\r\n Enter your token in the text input below.\r\n\r\nExample: \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\""
+        Description = "Enter 'Bearer' [space] and then your valid token in the text input below.\r\n\r\nExample: \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\""
     });
 
     c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -132,6 +144,8 @@ builder.Services.AddSwaggerGen(c =>
             new string[] {}
         }
     });
+
+    c.EnableAnnotations(); // Ye zaroori hai [SwaggerOperation] ke liye
 });
 
 var app = builder.Build();
@@ -159,7 +173,7 @@ using (var scope = app.Services.CreateScope())
         
         var context = services.GetRequiredService<AuthDbContext>();
         
-        // 🚀 Step 1: Ensure Tables exist using a combination of EF and Raw SQL
+        //  Step 1: Ensure Tables exist using a combination of EF and Raw SQL
         context.Database.EnsureCreated();
         
         var createTablesSql = @"

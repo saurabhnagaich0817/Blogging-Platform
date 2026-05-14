@@ -1,50 +1,49 @@
-# ======================
-# .NET / C#
-# ======================
+# .NET Core
 bin/
 obj/
+[Bb]in/
+[Oo]bj/
 *.user
 *.suo
 *.userosscache
 *.sln.docstates
+TestResults/
+.sonarqube/
+.scannerwork/
 
 # Logs
 *.log
 Logs/
-
-# Environment
-appsettings.Development.json
-appsettings.Local.json
-
-# ======================
-# Node / Angular
-# ======================
-node_modules/
-dist/
-.angular/
-.env
 npm-debug.log*
 
-# ======================
-# OS / Editor
-# ======================
+# Environment / Secrets
+appsettings.Development.json
+appsettings.Local.json
+.env
+.env.*
+
+# Node / Angular
+node_modules/
+dist/
+tmp/
+out-tsc/
+.angular/
+.cache/
+playwright-report/
+test-results/
+
+# IDE / OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
-
-# ======================
-# Secrets (Commented out to allow initial deployment)
-# ======================
-# appsettings.json 
-
-# ======================
-# Others & Separations
-# ======================
-Frontend/
-coverage/
-.dotnet/
+*.swp
+*.swo
 
 # Media Uploads
 **/wwwroot/uploads/*
 !**/wwwroot/uploads/.gitkeep
+
+# Project Specific
+git_remotes.txt
+InkWell_Postman_Collection.json.tmp

@@ -1,6 +1,0 @@
-@InkWell.API.Gateway_HostAddress = http://localhost:5032
-
-GET {{InkWell.API.Gateway_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

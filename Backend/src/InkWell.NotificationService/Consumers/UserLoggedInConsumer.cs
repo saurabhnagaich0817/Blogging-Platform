@@ -23,19 +23,45 @@ namespace InkWell.NotificationService.Consumers
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
 
-            // 🚀 Sync user info on every login
+            // 🚀 Sync user info on every login (Upsert pattern)
             var user = await dbContext.NotificationUsers.FindAsync(message.UserId);
+            
             if (user == null)
             {
-                user = new NotificationUser { UserId = message.UserId };
-                dbContext.NotificationUsers.Add(user);
+                try 
+                {
+                    user = new NotificationUser 
+                    { 
+                        UserId = message.UserId,
+                        FullName = message.FullName,
+                        Role = message.Role,
+                        LastSeen = DateTime.UtcNow
+                    };
+                    dbContext.NotificationUsers.Add(user);
+                    await dbContext.SaveChangesAsync();
+                }
+                catch (Exception)
+                {
+                    // If insert fails (maybe due to concurrent sync), try to fetch again and update
+                    dbContext.ChangeTracker.Clear();
+                    user = await dbContext.NotificationUsers.FindAsync(message.UserId);
+                    if (user != null)
+                    {
+                        user.FullName = message.FullName;
+                        user.Role = message.Role;
+                        user.LastSeen = DateTime.UtcNow;
+                        await dbContext.SaveChangesAsync();
+                    }
+                }
             }
-            
-            user.FullName = message.FullName;
-            user.Role = message.Role;
-            user.LastSeen = DateTime.UtcNow;
+            else
+            {
+                user.FullName = message.FullName;
+                user.Role = message.Role;
+                user.LastSeen = DateTime.UtcNow;
+                await dbContext.SaveChangesAsync();
+            }
 
-            await dbContext.SaveChangesAsync();
             _logger.LogInformation("User {UserId} activity synced on login", message.UserId);
         }
     }

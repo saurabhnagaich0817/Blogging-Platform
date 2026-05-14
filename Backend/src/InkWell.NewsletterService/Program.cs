@@ -85,7 +85,6 @@ builder.Services.AddMassTransit(x =>
     });
 });
 
-
 // 3. Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "InkWellSuperSecretKey2026_KeepItSafe!";
@@ -129,9 +128,10 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo 
     { 
-        Title = "InkWell Newsletter API", 
+        Title = "InkWell Newsletter & Subscription Service", 
         Version = "v1",
-        Description = "Microservice handling email subscriptions via a secure Double Opt-In workflow." 
+        Description = "Microservice managing email marketing, audience growth, and automated campaigns via Double Opt-In workflows.",
+        Contact = new OpenApiContact { Name = "InkWell Marketing", Email = "marketing@inkwell.com" }
     });
     c.EnableAnnotations();
 
@@ -156,8 +156,11 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
-
 var app = builder.Build();
+
+// EXPLICITLY START MASSTRANSIT BUS
+var busControl = app.Services.GetRequiredService<IBusControl>();
+await busControl.StartAsync();
 
 // 5. Configure Swagger - Enabled for all environments on HF
 app.UseSwagger();

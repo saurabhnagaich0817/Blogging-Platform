@@ -37,24 +37,9 @@ namespace InkWell.AuthService.Controllers
             return Ok(new BaseResponse<UserResponseDTO>(true, "Profile fetched successfully", user));
         }
 
-        // Add aliases for registration/login if requested by frontend using /api/users path
-        [HttpPost("register")]
-        public async Task<IActionResult> RegisterUser([FromBody] RegisterRequestDTO request)
-        {
-            var response = await _authService.RegisterAsync(request);
-            if (!response.IsSuccess) return BadRequest(new BaseResponse<string>(false, response.Message, null));
-            return Ok(new BaseResponse<AuthResponseDTO>(true, "User registered successfully", response));
-        }
-
-        [HttpPost("login")]
-        public async Task<IActionResult> LoginUser([FromBody] LoginRequestDTO request)
-        {
-            var response = await _authService.LoginAsync(request);
-            if (!response.IsSuccess) return Unauthorized(new BaseResponse<string>(false, response.Message, null));
-            return Ok(new BaseResponse<AuthResponseDTO>(true, "Login successful", response));
-        }
         [HttpPost("request-upgrade")]
         [Authorize]
+        [SwaggerOperation(Summary = "Request role upgrade", Description = "Allows a Reader to request an upgrade to Author role.")]
         public async Task<IActionResult> RequestUpgrade([FromBody] UpgradeRequestDTO request)
         {
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized(new BaseResponse<string>(false, "Invalid user token.", null));
@@ -65,6 +50,7 @@ namespace InkWell.AuthService.Controllers
 
         [HttpPost("{targetUserId}/approve-upgrade")]
         [Authorize(Roles = "Admin")]
+        [SwaggerOperation(Summary = "Approve role upgrade", Description = "Admin only. Approves a pending role upgrade request.")]
         public async Task<IActionResult> ApproveUpgrade(Guid targetUserId, [FromBody] UpgradeRequestDTO request)
         {
             if (!TryGetCurrentUserId(out var adminId)) return Unauthorized(new BaseResponse<string>(false, "Invalid user token.", null));
@@ -119,6 +105,7 @@ namespace InkWell.AuthService.Controllers
 
         [HttpPost("{targetUserId}/connect")]
         [Authorize]
+        [SwaggerOperation(Summary = "Request connection", Description = "Sends a connection request to another user.")]
         public async Task<IActionResult> RequestConnection(Guid targetUserId)
         {
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized(new BaseResponse<string>(false, "Invalid user token.", null));
@@ -129,6 +116,7 @@ namespace InkWell.AuthService.Controllers
 
         [HttpPost("{requesterId}/accept-connect")]
         [Authorize]
+        [SwaggerOperation(Summary = "Accept connection", Description = "Accepts a pending connection request.")]
         public async Task<IActionResult> AcceptConnection(Guid requesterId)
         {
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized(new BaseResponse<string>(false, "Invalid user token.", null));
@@ -139,6 +127,7 @@ namespace InkWell.AuthService.Controllers
 
         [HttpPost("{requesterId}/reject-connect")]
         [Authorize]
+        [SwaggerOperation(Summary = "Reject connection", Description = "Rejects a pending connection request.")]
         public async Task<IActionResult> RejectConnection(Guid requesterId)
         {
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized(new BaseResponse<string>(false, "Invalid user token.", null));
@@ -149,6 +138,7 @@ namespace InkWell.AuthService.Controllers
 
         [HttpGet("{targetUserId}/connection-status")]
         [Authorize]
+        [SwaggerOperation(Summary = "Get connection status", Description = "Checks the relationship status between current user and target user.")]
         public async Task<IActionResult> GetConnectionStatus(Guid targetUserId)
         {
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized(new BaseResponse<string>(false, "Invalid user token.", null));
@@ -168,6 +158,7 @@ namespace InkWell.AuthService.Controllers
 
         [HttpDelete("{targetUserId}")]
         [Authorize(Roles = "Admin")]
+        [SwaggerOperation(Summary = "Delete user", Description = "Admin only. Permanently deletes a user from the system.")]
         public async Task<IActionResult> DeleteUser(Guid targetUserId)
         {
             var response = await _authService.DeleteUserAsync(targetUserId);

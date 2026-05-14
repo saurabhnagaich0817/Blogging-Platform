@@ -16,9 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseCustomSerilog("MediaService");
 
 // 1. Database Configuration
-var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") ?? 
-                       Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION") ??
-                       builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 // 🔥 Ultra-Sanitize: Remove quotes, spaces, and invisible newlines
 connectionString = connectionString?.Trim(' ', '"', '\'', '\r', '\n');
@@ -107,9 +105,10 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo 
     { 
-        Title = "InkWell Media API", 
+        Title = "InkWell Media & Asset Management Service", 
         Version = "v1",
-        Description = "Microservice handling file uploads, serving static files, and S3-ready file storage logic." 
+        Description = "Microservice handling secure file uploads, serving multimedia assets, and supporting multi-provider storage (Local/Cloud).",
+        Contact = new OpenApiContact { Name = "InkWell Infrastructure", Email = "ops@inkwell.com" }
     });
     
     c.EnableAnnotations();

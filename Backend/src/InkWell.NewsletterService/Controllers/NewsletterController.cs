@@ -67,7 +67,7 @@ namespace InkWell.NewsletterService.Controllers
             return Ok(new BaseResponse<IEnumerable<SubscriberResponseDTO>>(true, "Subscribers fetched successfully", subscribers));
         }
 
-        [HttpPatch("{id}/approve")]
+        [HttpPost("{id}/approve")]
         [Authorize(Roles = "Admin")]
         [SwaggerOperation(Summary = "Approve Subscriber", Description = "Admin only. Manually approves a subscriber.")]
         public async Task<IActionResult> ApproveSubscriber(Guid id)
@@ -77,7 +77,7 @@ namespace InkWell.NewsletterService.Controllers
             return Ok(new BaseResponse<string>(true, "Subscriber approved.", null));
         }
 
-        [HttpPatch("{id}/reject")]
+        [HttpPost("{id}/reject")]
         [Authorize(Roles = "Admin")]
         [SwaggerOperation(Summary = "Reject Subscriber", Description = "Admin only. Rejects a subscriber.")]
         public async Task<IActionResult> RejectSubscriber(Guid id)

@@ -97,9 +97,10 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo 
     { 
-        Title = "InkWell Category & Tag API", 
+        Title = "InkWell Content Taxonomy & Tagging Service", 
         Version = "v1",
-        Description = "Microservice handling categories hierarchy and trending tags." 
+        Description = "Microservice managing story categories, trending tags, and content classification for the InkWell platform.",
+        Contact = new OpenApiContact { Name = "InkWell Content Team", Email = "content@inkwell.com" }
     });
     
     c.EnableAnnotations();
