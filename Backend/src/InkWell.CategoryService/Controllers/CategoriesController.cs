@@ -7,63 +7,79 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace InkWell.CategoryService.Controllers
 {
+    /// <summary>
+    /// Controller for managing content taxonomies and categories.
+    /// </summary>
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/categories")]
     [Produces("application/json")]
     public class CategoriesController : ControllerBase
     {
-        private readonly ICategoryService _service;
+        private readonly ICategoryService _categoryService;
 
-        public CategoriesController(ICategoryService service)
+        public CategoriesController(ICategoryService categoryService)
         {
-            _service = service;
+            _categoryService = categoryService;
         }
 
-        [HttpPost]
-        [Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Create a Category", Description = "Allows Admins to create new categories.")]
-        [SwaggerResponse(201, "Category created successfully", typeof(CategoryResponseDTO))]
-        public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryDTO dto)
-        {
-            var response = await _service.CreateCategoryAsync(dto);
-            return CreatedAtAction(nameof(GetCategoryBySlug), new { slug = response.Slug }, new BaseResponse<CategoryResponseDTO>(true, "Category created successfully", response));
-        }
-
+        /// <summary>
+        /// Retrieves all active categories available for posts.
+        /// </summary>
         [HttpGet]
-        [SwaggerOperation(Summary = "Get all categories", Description = "Fetches the full list of categories.")]
-        [SwaggerResponse(200, "List of categories", typeof(IEnumerable<CategoryResponseDTO>))]
-        public async Task<IActionResult> GetAllCategories()
+        [SwaggerOperation(Summary = "Fetch all categories", Description = "Returns a list of all taxonomy categories.")]
+        public async Task<IActionResult> GetAll()
         {
-            var categories = await _service.GetAllCategoriesAsync();
+            var categories = await _categoryService.GetAllCategoriesAsync();
             return Ok(new BaseResponse<IEnumerable<CategoryResponseDTO>>(true, "Categories fetched successfully", categories));
         }
 
-        [HttpGet("{slug}")]
-        [SwaggerOperation(Summary = "Get category by slug", Description = "Fetches a specific category details by its unique slug.")]
-        [SwaggerResponse(200, "Category found", typeof(CategoryResponseDTO))]
-        [SwaggerResponse(404, "Category not found")]
-        public async Task<IActionResult> GetCategoryBySlug(string slug)
+        /// <summary>
+        /// Retrieves detailed information for a specific category.
+        /// </summary>
+        [HttpGet("{id}")]
+        [SwaggerOperation(Summary = "Get category by ID", Description = "Returns metadata for a specific category.")]
+        public async Task<IActionResult> GetById(Guid id)
         {
-            var category = await _service.GetCategoryBySlugAsync(slug);
-            if (category == null)
-            {
-                return NotFound(new BaseResponse<string>(false, "Category not found", null));
-            }
-
+            var category = await _categoryService.GetCategoryByIdAsync(id);
+            if (category == null) return NotFound(new BaseResponse<string>(false, "Category not found", null));
             return Ok(new BaseResponse<CategoryResponseDTO>(true, "Category fetched successfully", category));
         }
 
-        [HttpDelete("{id:guid}")]
+        /// <summary>
+        /// Creates a new category. Restricted to Administrators.
+        /// </summary>
+        [HttpPost]
         [Authorize(Roles = "Admin")]
-        [SwaggerOperation(Summary = "Delete a category", Description = "Deletes a category entirely. Admin only.")]
-        public async Task<IActionResult> DeleteCategory(Guid id)
+        [SwaggerOperation(Summary = "Create a new category", Description = "Admin only. Adds a new category to the platform taxonomy.")]
+        public async Task<IActionResult> Create([FromBody] CreateCategoryDTO request)
         {
-            var success = await _service.DeleteCategoryAsync(id);
-            if (!success)
-            {
-                return NotFound(new BaseResponse<string>(false, "Category not found", null));
-            }
+            var response = await _categoryService.CreateCategoryAsync(request);
+            return CreatedAtAction(nameof(GetById), new { id = response.CategoryId }, new BaseResponse<CategoryResponseDTO>(true, "Category created successfully", response));
+        }
 
+        /// <summary>
+        /// Updates an existing category's metadata. Restricted to Administrators.
+        /// </summary>
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
+        [SwaggerOperation(Summary = "Update a category", Description = "Admin only. Modifies existing category details.")]
+        public async Task<IActionResult> Update(Guid id, [FromBody] CreateCategoryDTO request)
+        {
+            var response = await _categoryService.UpdateCategoryAsync(id, request);
+            if (response == null) return NotFound(new BaseResponse<string>(false, "Category not found", null));
+            return Ok(new BaseResponse<CategoryResponseDTO>(true, "Category updated successfully", response));
+        }
+
+        /// <summary>
+        /// Permanently removes a category. Restricted to Administrators.
+        /// </summary>
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        [SwaggerOperation(Summary = "Delete a category", Description = "Admin only. Removes a category from the platform.")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var success = await _categoryService.DeleteCategoryAsync(id);
+            if (!success) return NotFound(new BaseResponse<string>(false, "Category not found", null));
             return Ok(new BaseResponse<string>(true, "Category deleted successfully", null));
         }
     }

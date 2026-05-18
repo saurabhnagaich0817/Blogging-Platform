@@ -6,7 +6,9 @@ namespace InkWell.CategoryService.Repositories
     {
         Task<Category> CreateCategoryAsync(Category category);
         Task<IEnumerable<Category>> GetAllCategoriesAsync();
+        Task<Category?> GetCategoryByIdAsync(Guid id);
         Task<Category?> GetCategoryBySlugAsync(string slug);
+        Task UpdateCategoryAsync(Category category);
         Task DeleteCategoryAsync(Category category);
         
         Task<Tag> CreateTagAsync(Tag tag);

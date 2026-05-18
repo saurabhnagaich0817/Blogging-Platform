@@ -20,8 +20,17 @@ namespace InkWell.CategoryService.Repositories
             return await _context.Categories.ToListAsync();
         }
 
+        public async Task<Category?> GetCategoryByIdAsync(Guid id) {
+            return await _context.Categories.FindAsync(id);
+        }
+
         public async Task<Category?> GetCategoryBySlugAsync(string slug) {
             return await _context.Categories.FirstOrDefaultAsync(c => c.Slug == slug);
+        }
+
+        public async Task UpdateCategoryAsync(Category category) {
+            _context.Categories.Update(category);
+            await _context.SaveChangesAsync();
         }
 
         public async Task DeleteCategoryAsync(Category category) {
@@ -72,7 +81,6 @@ namespace InkWell.CategoryService.Repositories
         }
 
         public async Task<IEnumerable<Tag>> GetTrendingTagsAsync(int count) {
-            // Sort by highest post count
             return await _context.Tags
                 .OrderByDescending(t => t.PostCount)
                 .Take(count)

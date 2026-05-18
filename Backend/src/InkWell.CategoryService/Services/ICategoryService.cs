@@ -6,7 +6,9 @@ namespace InkWell.CategoryService.Services
     {
         Task<CategoryResponseDTO> CreateCategoryAsync(CreateCategoryDTO dto);
         Task<IEnumerable<CategoryResponseDTO>> GetAllCategoriesAsync();
+        Task<CategoryResponseDTO?> GetCategoryByIdAsync(Guid id);
         Task<CategoryResponseDTO?> GetCategoryBySlugAsync(string slug);
+        Task<CategoryResponseDTO?> UpdateCategoryAsync(Guid id, CreateCategoryDTO dto);
         Task<bool> DeleteCategoryAsync(Guid id);
 
         Task<TagResponseDTO> CreateTagAsync(CreateTagDTO dto);

@@ -84,7 +84,8 @@ export interface UpdatePostRequest {
   content?: string;
   imageUrl?: string;
   status?: string;
-  categoryId?: string;
+  categoryId?: string | null;
+  categoryName?: string | null;
 }
 
 /** Comment from backend CommentResponseDTO */

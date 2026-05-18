@@ -67,7 +67,7 @@ import { AuthService } from '../../core/services/auth.service';
                 <label class="premium-label">Full Name</label>
                 <div class="premium-input-box">
                   <mat-icon>person_outline</mat-icon>
-                  <input type="text" formControlName="fullName" placeholder="John Doe">
+                  <input type="text" formControlName="fullName" placeholder="Rahul Sharma">
                 </div>
                 <span class="error-msg" *ngIf="f['fullName'].touched && f['fullName'].invalid">Full name required.</span>
               </div>
@@ -76,7 +76,7 @@ import { AuthService } from '../../core/services/auth.service';
                 <label class="premium-label">Username</label>
                 <div class="premium-input-box">
                   <mat-icon>alternate_email</mat-icon>
-                  <input type="text" formControlName="username" placeholder="johndoe">
+                  <input type="text" formControlName="username" placeholder="rahulsharma">
                 </div>
                 <span class="error-msg" *ngIf="f['username'].touched && f['username'].invalid">Username required.</span>
               </div>
@@ -86,7 +86,7 @@ import { AuthService } from '../../core/services/auth.service';
               <label class="premium-label">Email Address</label>
               <div class="premium-input-box">
                 <mat-icon>email</mat-icon>
-                <input type="email" formControlName="email" placeholder="john@example.com">
+                <input type="email" formControlName="email" placeholder="rahul@example.com">
               </div>
               <span class="error-msg" *ngIf="f['email'].touched && f['email'].invalid">Valid email required.</span>
             </div>

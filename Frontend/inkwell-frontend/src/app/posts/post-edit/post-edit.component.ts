@@ -374,8 +374,8 @@ export class PostEditComponent implements OnInit, AfterViewInit {
       title: this.postForm.value.title.trim(),
       content: this.postForm.value.content,
       imageUrl: imageUrl,
-      categoryId: selectedCategory?.categoryId,
-      categoryName: selectedCategory?.name
+      categoryId: selectedCategory?.categoryId || null,
+      categoryName: selectedCategory?.name || null
     };
 
     this.postService.updatePost(this.post.postId, request)

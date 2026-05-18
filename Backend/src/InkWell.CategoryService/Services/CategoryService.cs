@@ -18,11 +18,11 @@ namespace InkWell.CategoryService.Services
         /// </summary>
         public async Task<CategoryResponseDTO> CreateCategoryAsync(CreateCategoryDTO dto)
         {
-            var slug = await GenerateCategorySlug(dto.Name);
+            var slug = await GenerateCategorySlug(dto.Name ?? "Category");
             var category = new Category
             {
                 CategoryId = Guid.NewGuid(),
-                Name = dto.Name,
+                Name = dto.Name ?? "Unnamed",
                 Slug = slug,
                 Description = dto.Description ?? "",
                 ParentCategoryId = dto.ParentCategoryId,
@@ -48,18 +48,46 @@ namespace InkWell.CategoryService.Services
             return categories.Select(MapCategoryToDTO);
         }
 
+        public async Task<CategoryResponseDTO?> GetCategoryByIdAsync(Guid id)
+        {
+            var category = await _repository.GetCategoryByIdAsync(id);
+            return category == null ? null : MapCategoryToDTO(category);
+        }
+
         public async Task<CategoryResponseDTO?> GetCategoryBySlugAsync(string slug)
         {
             var category = await _repository.GetCategoryBySlugAsync(slug);
             return category == null ? null : MapCategoryToDTO(category);
         }
 
+        public async Task<CategoryResponseDTO?> UpdateCategoryAsync(Guid id, CreateCategoryDTO dto)
+        {
+            var category = await _repository.GetCategoryByIdAsync(id);
+            if (category == null) return null;
+
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+            {
+                category.Name = dto.Name;
+                category.Slug = await GenerateCategorySlug(dto.Name);
+            }
+
+            if (dto.Description != null)
+            {
+                category.Description = dto.Description;
+            }
+
+            if (dto.ParentCategoryId.HasValue)
+            {
+                category.ParentCategoryId = dto.ParentCategoryId;
+            }
+
+            await _repository.UpdateCategoryAsync(category);
+            return MapCategoryToDTO(category);
+        }
+
         public async Task<bool> DeleteCategoryAsync(Guid id)
         {
-            // For simplicity, we are deleting by matching ID after getting all. 
-            // Better to add GetCategoryById in repo, but we can do this:
-            var cats = await _repository.GetAllCategoriesAsync();
-            var category = cats.FirstOrDefault(c => c.CategoryId == id);
+            var category = await _repository.GetCategoryByIdAsync(id);
             if (category == null) return false;
             
             await _repository.DeleteCategoryAsync(category);
@@ -68,11 +96,11 @@ namespace InkWell.CategoryService.Services
 
         public async Task<TagResponseDTO> CreateTagAsync(CreateTagDTO dto)
         {
-            var slug = await GenerateTagSlug(dto.Name);
+            var slug = await GenerateTagSlug(dto.Name ?? "Tag");
             var tag = new Tag
             {
                 TagId = Guid.NewGuid(),
-                Name = dto.Name,
+                Name = dto.Name ?? "Unnamed",
                 Slug = slug,
                 CreatedAt = DateTime.UtcNow
             };
@@ -83,7 +111,6 @@ namespace InkWell.CategoryService.Services
             }
             catch (Exception)
             {
-                // Fallback: If slug collision still happens (race condition), force a unique slug
                 tag.Slug = $"{slug}-{Guid.NewGuid().ToString().Substring(0, 4)}";
                 await _repository.CreateTagAsync(tag);
             }
@@ -111,7 +138,7 @@ namespace InkWell.CategoryService.Services
             if (tag == null) return false;
 
             var existing = await _repository.GetPostTagAsync(postId, tagId);
-            if (existing != null) return true; // Already assigned
+            if (existing != null) return true;
 
             await _repository.AddTagToPostAsync(new PostTag
             {
@@ -120,7 +147,6 @@ namespace InkWell.CategoryService.Services
                 TagId = tagId
             });
 
-            // Increment PostCount
             tag.PostCount++;
             await _repository.UpdateTagAsync(tag);
             return true;

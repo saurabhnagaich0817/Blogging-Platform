@@ -7,6 +7,9 @@ import { environment } from '../../../environments/environment';
 import { BaseResponse, AuthResponse, User, UserProfile } from '../models/models';
 import { jwtDecode } from 'jwt-decode';
 
+/**
+ * Payload structure for the JWT token used in InkWell.
+ */
 interface JwtPayload {
   exp: number;
   sub?: string;
@@ -21,6 +24,9 @@ interface JwtPayload {
   [key: string]: any;
 }
 
+/**
+ * Service responsible for managing user authentication, identity, and profile operations.
+ */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly TOKEN_KEY = 'inkwell_token';
@@ -29,7 +35,9 @@ export class AuthService {
 
   constructor(private http: HttpClient, private router: Router) {}
 
-  // This method sends the user's registration data to the Backend API.
+  /**
+   * Registers a new user account.
+   */
   register(
     username: string,
     email: string,
@@ -37,96 +45,135 @@ export class AuthService {
     role: string = 'Reader',
     fullName: string = ''
   ): Observable<BaseResponse<AuthResponse>> {
-    // We send a POST request to the /auth/register endpoint.
     return this.http.post<BaseResponse<AuthResponse>>(
       `${environment.apiUrl}/auth/register`,
       { username, email, password, role, fullName }
     );
   }
 
-  // This method is used to log in the user and get a secure token from the Backend.
+  /**
+   * Authenticates a user and stores the issued JWT.
+   */
   login(email: string, password: string): Observable<BaseResponse<AuthResponse>> {
-    // We send the email and password to our API Gateway.
     return this.http.post<BaseResponse<AuthResponse>>(
       `${environment.apiUrl}/auth/login`,
       { email, password }
     ).pipe(
-      tap((response: any) => {
-        // If login is successful, we get a 'token' which is like a digital ID card.
-        if ((response.success || response.Success) && response.data?.token) {
-          // We save this token in the browser's memory so the user stays logged in.
+      tap((response: BaseResponse<AuthResponse>) => {
+        if (response.success && response.data?.token) {
           this.setToken(response.data.token);
         }
       })
     );
   }
 
+  /**
+   * Authenticates a user using Google OAuth.
+   */
   googleLogin(googleToken: string): Observable<BaseResponse<AuthResponse>> {
     return this.http.post<BaseResponse<AuthResponse>>(
       `${environment.apiUrl}/auth/google-login`,
       { token: googleToken }
     ).pipe(
-      tap((response: any) => {
-        if ((response.success || response.Success) && response.data?.token) {
+      tap((response: BaseResponse<AuthResponse>) => {
+        if (response.success && response.data?.token) {
           this.setToken(response.data.token);
         }
       })
     );
   }
 
+  /**
+   * Clears the current session and navigates to the login page.
+   */
   logout(): void {
     localStorage.removeItem(this.TOKEN_KEY);
     this.currentUserSubject.next(null);
     this.router.navigate(['/auth/login']);
   }
 
+  /**
+   * Manually sets the authentication token and updates user state.
+   */
   setToken(token: string): void {
     localStorage.setItem(this.TOKEN_KEY, token);
     this.currentUserSubject.next(this.getUserFromToken());
   }
 
+  /**
+   * Retrieves the current JWT from local storage.
+   */
   getToken(): string | null {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
+  /**
+   * Checks if a user session is active.
+   */
   isLoggedIn(): boolean {
     return !!this.getUserFromToken();
   }
 
+  /**
+   * Returns the currently authenticated user object.
+   */
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;
   }
 
+  /**
+   * Returns the role of the current user. Defaults to 'Reader'.
+   */
   getUserRole(): string {
     return this.getCurrentUser()?.role ?? 'Reader';
   }
 
+  /**
+   * Checks if the user has a specific role.
+   */
   hasRole(role: string): boolean {
     return this.getUserRole() === role;
   }
 
+  /**
+   * Fetches all platform users (Admin view).
+   */
   getAllUsers(): Observable<BaseResponse<User[]>> {
     return this.http.get<BaseResponse<User[]>>(`${environment.apiUrl}/users`);
   }
 
+  /**
+   * Fetches public profile details for a specific user.
+   */
   getProfile(username: string): Observable<BaseResponse<User>> {
     return this.http.get<BaseResponse<User>>(`${environment.apiUrl}/users/profile/${username}`);
   }
 
+  /**
+   * Requests a role upgrade to the backend.
+   */
   requestUpgrade(role: string): Observable<BaseResponse<string>> {
     return this.http.post<BaseResponse<string>>(`${environment.apiUrl}/users/request-upgrade`, { role });
   }
 
+  /**
+   * Approves a user's role upgrade (Admin operation).
+   */
   approveUpgrade(userId: string, role: string): Observable<BaseResponse<string>> {
     return this.http.post<BaseResponse<string>>(`${environment.apiUrl}/users/${userId}/approve-upgrade`, { role });
   }
 
+  /**
+   * Updates the profile picture URL for the current user.
+   */
   updateProfilePicture(url: string): Observable<BaseResponse<string>> {
     return this.http.patch<BaseResponse<string>>(`${environment.apiUrl}/users/profile-picture`, { url });
   }
 
+  /**
+   * Updates the authenticated user's profile details.
+   */
   updateProfile(profile: UserProfile): Observable<BaseResponse<string>> {
-    // Map UserProfile to the DTO expected by backend
     const dto = {
       displayName: profile.fullName || profile.displayName,
       bio: profile.bio,
@@ -134,39 +181,58 @@ export class AuthService {
       linkedInUrl: profile.linkedInUrl,
       githubUrl: profile.githubUrl
     };
-    return this.http.put<BaseResponse<string>>(`${environment.apiUrl}/users/profile`, dto);
+    return this.http.patch<BaseResponse<string>>(`${environment.apiUrl}/users/profile`, dto);
   }
 
+  /**
+   * Sends a connection request to another user.
+   */
   requestConnection(targetUserId: string): Observable<BaseResponse<string>> {
     return this.http.post<BaseResponse<string>>(`${environment.apiUrl}/users/${targetUserId}/connect`, {});
   }
 
+  /**
+   * Accepts a pending connection request.
+   */
   acceptConnection(requesterId: string): Observable<BaseResponse<string>> {
     return this.http.post<BaseResponse<string>>(`${environment.apiUrl}/users/${requesterId}/accept-connect`, {});
   }
 
+  /**
+   * Rejects a pending connection request.
+   */
   rejectConnection(requesterId: string): Observable<BaseResponse<string>> {
     return this.http.post<BaseResponse<string>>(`${environment.apiUrl}/users/${requesterId}/reject-connect`, {});
   }
 
+  /**
+   * Retrieves the current connection status with another user.
+   */
   getConnectionStatus(targetUserId: string): Observable<BaseResponse<string>> {
     return this.http.get<BaseResponse<string>>(`${environment.apiUrl}/users/${targetUserId}/connection-status`);
   }
 
+  /**
+   * Fetches pending connection requests for the current user.
+   */
   getPendingConnections(): Observable<BaseResponse<User[]>> {
     return this.http.get<BaseResponse<User[]>>(`${environment.apiUrl}/users/pending-connections`);
   }
 
+  /**
+   * Deletes a user account (Admin only).
+   */
   deleteUser(userId: string): Observable<BaseResponse<string>> {
     return this.http.delete<BaseResponse<string>>(`${environment.apiUrl}/users/${userId}`);
   }
 
+  /**
+   * Decodes the JWT and constructs a User object.
+   */
   private getUserFromToken(): User | null {
     try {
       const token = localStorage.getItem(this.TOKEN_KEY);
-      if (!token) {
-        return null;
-      }
+      if (!token) return null;
 
       const decoded = jwtDecode<JwtPayload>(token);
       if (!decoded || decoded.exp * 1000 < Date.now()) {
@@ -174,23 +240,12 @@ export class AuthService {
         return null;
       }
 
-      const roleClaim = decoded['role'] ??
-        decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
-      const id = decoded['userId'] ??
-        decoded['nameid'] ??
-        decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ??
-        decoded['sub'] ??
-        decoded['id'] ??
-        '';
-      const email = decoded['email'] ??
-        decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ??
-        '';
-      const username = decoded['username'] ??
-        decoded['unique_name'] ??
-        (email ? email.split('@')[0] : '');
-      const fullName = decoded['name'] ??
-        decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ??
-        '';
+      // Map standard and OIDC claim types to local User model
+      const roleClaim = decoded['role'] ?? decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
+      const id = decoded['userId'] ?? decoded['nameid'] ?? decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ?? decoded['sub'] ?? decoded['id'] ?? '';
+      const email = decoded['email'] ?? decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ?? '';
+      const username = decoded['username'] ?? decoded['unique_name'] ?? (email ? email.split('@')[0] : '');
+      const fullName = decoded['name'] ?? decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ?? '';
       const profilePictureUrl = decoded['profilePictureUrl'] ?? '';
 
       if (!id) {
@@ -207,7 +262,7 @@ export class AuthService {
         profilePictureUrl
       };
     } catch (error) {
-      console.warn('Invalid token found in storage', error);
+      console.warn('Authentication token could not be parsed.', error);
       localStorage.removeItem(this.TOKEN_KEY);
       return null;
     }

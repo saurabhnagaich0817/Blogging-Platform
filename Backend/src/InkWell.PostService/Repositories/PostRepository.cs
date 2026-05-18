@@ -1,35 +1,30 @@
 using InkWell.PostService.Data;
 using InkWell.PostService.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace InkWell.PostService.Repositories
 {
+    /// <summary>
+    /// Implementation of the Post repository using Entity Framework Core.
+    /// Handles data persistence for blog posts, likes, and saved status.
+    /// </summary>
     public class PostRepository : IPostRepository
     {
         private readonly PostDbContext _context;
+        private readonly ILogger<PostRepository> _logger;
 
-        public PostRepository(PostDbContext context)
+        public PostRepository(PostDbContext context, ILogger<PostRepository> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<Post> CreatePostAsync(Post post)
         {
-            try
-            {
-                _context.Posts.Add(post);
-                await _context.SaveChangesAsync();
-                return post;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error saving post to DB: {ex.Message}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-                }
-                throw;
-            }
+            _context.Posts.Add(post);
+            await _context.SaveChangesAsync();
+            return post;
         }
 
         public async Task<Post?> GetPostByIdAsync(Guid id)
@@ -39,11 +34,14 @@ namespace InkWell.PostService.Repositories
 
         public async Task<IEnumerable<Post>> GetAllPostsAsync()
         {
-            return await _context.Posts.ToListAsync();
+            return await _context.Posts
+                .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync();
         }
 
         public async Task<Post> UpdatePostAsync(Post post)
         {
+            post.UpdatedAt = DateTime.UtcNow;
             _context.Posts.Update(post);
             await _context.SaveChangesAsync();
             return post;
@@ -102,13 +100,9 @@ namespace InkWell.PostService.Repositories
 
         public async Task<IEnumerable<Post>> GetSavedPostsAsync(Guid userId)
         {
-            var savedPostIds = await _context.SavedPosts
-                .Where(s => s.UserId == userId)
-                .Select(s => s.PostId)
-                .ToListAsync();
-
             return await _context.Posts
-                .Where(p => savedPostIds.Contains(p.PostId))
+                .Where(p => _context.SavedPosts.Any(s => s.PostId == p.PostId && s.UserId == userId))
+                .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
         }
 
@@ -116,6 +110,7 @@ namespace InkWell.PostService.Repositories
         {
             return await _context.Posts
                 .Where(p => p.AuthorId == authorId)
+                .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
         }
 
